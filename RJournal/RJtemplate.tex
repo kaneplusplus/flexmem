@@ -1,0 +1,201 @@
+\title{flexmem: Allowing R to Natively Support Out-of-core Data Structures}
+\author{by Michael Kane, and Bryan Lewis}
+
+\maketitle
+
+\abstract{
+An abstract of less than 150 words.
+}
+
+%Introductory section which may include references in parentheses, say
+%\citep{R:Ihaka+Gentleman:1996} or cite a reference such as
+%\citet{R:Ihaka+Gentleman:1996} in the text.
+
+%\section{Introduction}
+
+Challenges to supporting big-data in R
+\begin{enumerate}
+  \item indexing: fixed in the next version of R
+  \item out-of-core data structures: memory-map - integration is a challenge
+\end{enumerate}
+
+\section{Past work}
+
+Past approaches
+\begin{enumerate}
+  \item packages: bigmemory and ff
+  \item doppleganger
+\end{enumerate}
+
+%This section may contain a figure such as Figure \ref{figure:onecolfig}.
+
+%\begin{figure}
+%\vspace*{.1in}
+%\framebox[\textwidth]{\hfill \raisebox{-.45in}{\rule{0in}{1in}}
+%                      A picture goes here \hfill}
+%\caption{\label{figure:onecolfig}
+%A normal figure only occupies one column.}
+%\end{figure}
+
+\section{Overriding R's default memory allocator}
+
+Most software applications, including R, make use of dynamic
+libraries. These provide standard functionality, such as math operations,
+graphing capabilities, and printing to the console, freeing software developers 
+from their reimplementation. Applications make use of these resources through
+a process called dynamic linking.  The operating
+system starts an application by loading both its machine code along with
+all of the dynamically linked libraries on which the application depends and 
+starts the application.
+
+Unix-like operating systems, like Linux and Mac OS X, allow a developer to 
+specify new functionality for standard functions. This is done by creating
+a new dynamically linked library (DLL), which defines the new functionality. 
+This new library is then ``preloaded'' by setting an appropriate environment 
+variable to its location. For Linux systems this is the LD\_PRELOAD variable
+and on Mac OS X it is DYLD\_LIBRARY\_PATH. 
+
+After the new DLL is created and the preload environment variable is set an 
+application is started. Standard libraries are loaded first, then the preloaded
+libraries. This allows the preloaded library to make use of standard 
+functionality if needed. The application then starts as usual. New functionality
+is automatically available to the application user.
+
+Among the functionalities included by dynamic libraries is the ability
+to dynamically allocate and free available memory. All programs that create
+new data structures during the execution of an application rely on this facility
+to allocate space to hold these data structures. The standards dynamic memory
+allocation functions used in R are malloc, calloc, realloc, and free. These
+functions are provided by stdlib, the standard C library. These are also
+the functions that are overridden in the flexmem package. Memory allocation
+calls are intercepted by the flexmem DLL. When the amount of memory to allocate
+exceeds a threshold, a memory-mapped file is created to hold the data
+structure. The address of the memory-mapped vector is stored dictionary, 
+implemented by the Standard Template Library \citep{Plauger:STL} map data 
+structure.  This new memory is returned to R to create a standard SEXP. 
+The R interpreter handles this memory exactly the same as when the memory 
+is created in RAM. 
+
+When the storage needed to hold a data structure is no longer needed, it
+is de-allocated with the free function. Once again, this function call
+once again goes to the flexmem library. The dictionary checks to see if
+the address to be freed is memory-mapped. If it is than the resource is
+freed and the file holding the data are erased. If it is not and the 
+data was allocated from RAM then the standard free function is called.
+Both the allocation and de-allocation changes are transparent to both the 
+R interpreter and the R user. The user receives the benefits of being able
+to allocate data structures that are limited in size by hard drive space,
+not RAM. And R, along with it's associated packages is able to make use
+of this new functionality with no changes whatsoever.
+
+<GIVE INSTRUCTIONS FOR USING FLEXMEM AND VERIFYING THAT IT WORKS HERE>
+
+\section{Managing implicit copying with R5 reference objects}
+
+Overriding the memory allocator solves the problem of creating native
+R objects that may be larger than available RAM. However, care needs
+be taken when computing with these potentially massive objects, 
+especially when they can be implicitly copied. While extra copies will
+not cause R to run out of memory per se, it can lead to programs running
+slowly when the data are large and copies are made often.
+
+This challenge can easily be addressed though by wrapping objects in 
+R5 reference classes. This class system was made available in 2011 and
+allows developer to create objects that exhibit reference semantics.
+That is, they must be explicitly copied and simple assignments to 
+reference objects result in new R objects that point to the same 
+underlying data structure. The flexmem package provides R5 objects 
+to wrap native objects allowing developers to quickly and easily create
+reference objects based on non-reference objects. Since the flexmem package
+was intended for the various matrix types provided by R, common matrix
+functionality is also provided by these wrapper-reference objects.
+
+\section{Parallel programming considerations}
+
+\begin{enumerate}
+\item multicore will ``just work''
+\item other parallel packages may require too much communication overhead
+for big data structures.
+\item Attaching to an existing file. An equivalent to R's load.
+<BRYAN> Can we use create an SEXP, swap the addresses in the interpreter,
+and free the SEXP R created?
+\end{enumerate}
+
+\section{Platform limitations}
+
+<BRYAN> Windows - how can we get this to work?
+
+\section{Future work}
+
+C++ support for new and delete
+
+\section{Conclusion}
+
+Don't change R, override memory allocation is a viable approach to big-data 
+computing in R.
+
+%There will likely be several sections, perhaps including code snippets, such
+%as
+%\begin{example}
+%  x <- 1:10
+%  result <- myFunction(x)
+%\end{example}
+
+%\section{Summary}
+%
+%This file is only a basic article template. For full details of \emph{The R Journal}
+%style and information on how to prepare your article for submission, see the
+%\href{http://journal.r-project.org/latex/RJauthorguide.pdf}{Instructions for Authors}.
+
+%\bibliography{example}
+
+\begin{thebibliography}{1}
+\expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
+\expandafter\ifx\csname url\endcsname\relax
+  \def\url#1{{\tt #1}}\fi
+
+\bibitem[Adler et al.(2012)]{ff:Adler+et al.:2012}
+A.~D and C.~Glaser and O.~Nenadic and J. Oehlschl\"agel and W.~Zucchini.
+\newblock {\em ff: memory-efficient storage of large data on disk and fast access functions}, 2012.
+\newblock URL \url{http:CRAN.R-project.org/package=ff}.
+\newblock R package version 2.2-10.
+
+%\bibitem[Ihaka and Gentleman(1996)]{R:Ihaka+Gentleman:1996}
+%R.~Ihaka and R.~Gentleman.
+%\newblock R: A language for data analysis and graphics.
+%\newblock {\em Journal of Computational and Graphical Statistics}, 5\penalty0
+%  (3):\penalty0 299--314, 1996.
+%\newblock URL \url{http://www.amstat.org/publications/jcgs/}.
+
+\bibitem[Kane and Emerson(2012)]{bigmemory:Kane+Emerson:2012}
+M.~Kane and J.~Emerson.
+\newblock {\em bigmemory: Manage massive matrices with shared memory and memory-mapped files}, 2012.
+\newblock URL \url{http://www.bigmemory.org}.
+\newblock R package version 4.3.0.
+
+\bibitem[Kane et al.(2012)]{ScalableStrategies:Kane+et al.:2012}
+M.~Kane and J.~Emerson and S.~Weston.
+\newblock Scalable Strategies for Computing with Massive Data.
+\newblock {\em Preprint}, 2012.
+
+\bibitem[Plauger(1995)]{Plauger:STL}
+P.~J.~Plauger.
+\newblock {The Standard Template Library}.
+\newblock {\em C/C++ Users Journal}, {\bf 13}(12), 10--20, 1995.
+
+\end{thebibliography}
+
+\address{Michael Kane\\
+  Yale University\\
+  300 George Street\\
+  Suite 555\\
+  New Haven, CT 06511\\
+  USA}\\
+\email{michael.kane@yale.edu}
+
+\address{Bryan Lewis\\
+  Paradigm4\\
+  Address\\
+  Country}\\
+\email{blewis@illposed.net}
+
