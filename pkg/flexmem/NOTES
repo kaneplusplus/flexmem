@@ -1,0 +1,15 @@
+(bug)
+During package init, we need to deal with location of default
+symbols in a better way. See these notes in the code:
+ * XXX Instead of RTLD_NEXT, we should explicitly locate the default
+ * calls in libc. For example, if we called this init routine from
+ * within another dyanmic library, the initialization could fail.
+
+(tuning)
+Realloc right now allocates a new file, copies over contents from
+old one, deallocates old one. This should be improved (just extend
+old file length).
+
+(note)
+We allocate in page sized chunks because that's what mmap does on
+Linux at least.
