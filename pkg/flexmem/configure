@@ -1,0 +1,2 @@
+echo "PKG_CPPFLAGS=-I${BOOST_LIBS}" > src/Makevars
+echo "PKG_LIBS=-ldl" >> src/Makevars
