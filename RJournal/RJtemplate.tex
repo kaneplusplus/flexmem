@@ -53,7 +53,7 @@ specify new functionality for standard functions. This is done by creating
 a new dynamically linked library (DLL), which defines the new functionality. 
 This new library is then ``preloaded'' by setting an appropriate environment 
 variable to its location. For Linux systems this is the \code{LD\_PRELOAD} 
-variable and on Mac OS X it is \code{DYLD\_LIBRARY\_PATH}. 
+variable and on Mac OS X it is \code{DYLD\_INSERT\_LIBRARIES}. 
 
 After the new DLL is created and the preload environment variable is set an 
 application is started. Standard libraries are loaded first, then the preloaded
