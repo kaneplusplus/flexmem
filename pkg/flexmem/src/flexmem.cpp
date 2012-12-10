@@ -1,3 +1,5 @@
+#include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <dlfcn.h>
@@ -6,6 +8,10 @@
 using namespace std;
 
 #include "flexmem.hpp"
+
+#include <R.h>
+#define USE_RINTERNALS
+#include <Rinternals.h>
 
 MemoryMappedFileManager *mmfm;
 string *flexmem_fname_template;
@@ -37,6 +43,9 @@ void flexmem_set_verbose(int j)
 
 void flexmem_init() 
 {
+  if (flexmem_verbose)
+    printf("flexmem_init called\n");
+
   flexmem_default_free = (void (*)(void*))dlsym (RTLD_NEXT, "free");
   flexmem_default_malloc = (void *(*)(size_t)) dlsym (RTLD_NEXT, "malloc");
   flexmem_default_realloc =
@@ -68,8 +77,13 @@ void* malloc(size_t size)
     {
       return NULL;
     }
+    if (flexmem_verbose) {
+      printf("mmap malloc called for allocation of size %d\n", size);
+    }
     return pret;
   }  
+  if (flexmem_verbose) {
+    printf("malloc called for allocation of size %d\n", size);
   return (*flexmem_default_malloc)(size);
 }
 
@@ -80,9 +94,17 @@ void free(void *ptr)
 
   const MemoryMappedFile *pmmf = mmfm->find(ptr);
   if (NULL != pmmf)
+  {
+    if (flexmem_verbose)
+      printf("mmap free called\n");
     mmfm->remove(ptr);
+  }
   else
+  {
+    if (flexmem_verbose)
+      printf("free called\n");
     (*flexmem_default_free)(ptr);
+  }
 }
 
 void* realloc (void *ptr, size_t size)
@@ -104,18 +126,103 @@ void* realloc (void *ptr, size_t size)
   // If it wasn't memmory mapped and the remapped 
   // data isn't either call regular realloc.
   if ( (NULL != pmmf) && size < flexmem_size_threshold)
-      return (*flexmem_default_realloc)(ptr, size);
+  {
+    if (flexmem_verbose) 
+      printf("realloc called for memory of size %d.\n", size)
+    return (*flexmem_default_realloc)(ptr, size);
+  }
  
   void *p;
   p = malloc(size);
   memcpy(p, ptr, size);
+  if (flexmem_verbose) 
+    printf("realloc called for memory of size %d.\n", size)
   free(ptr);
   return p;
 }
 
 void* flexmem_calloc(size_t count, size_t size)
 {
+  if (flexmem_verbose)
+    printf("calloc called... ")
   return malloc(count * size);
 }
+
+/*
+ * flexmem_threshold
+ *
+ * INPUT
+ * J SEXP   Threshold value or R_NilValue to only report current threshold
+ *
+ * OUTPUT
+ * SEXP     Threshold set point or R_NilValue on error
+ *
+ */
+
+SEXP
+flexmem_threshold (SEXP J)
+{
+  SEXP val;
+  void *handle;
+  size_t SIZE;
+  void (*set_threshold)(size_t *);
+  char *derror;
+
+  handle = dlopen (NULL, RTLD_LAZY);
+  if (!handle) {
+      error ("%s\n",dlerror ());
+      return R_NilValue;
+  }
+  dlerror ();
+  set_threshold = (void (*)(size_t*))dlsym(handle, "flexmem_set_threshold");
+  if ((derror = dlerror ()) != NULL)  {
+      error ("%s\n",dlerror ());
+      return R_NilValue;
+  }
+
+  PROTECT (val = allocVector(REALSXP, 1));
+  SIZE = (size_t) *(REAL (J));
+  (*set_threshold)(&SIZE);
+  REAL(val)[0] = (double) SIZE;
+  dlclose (handle);
+  UNPROTECT (1);
+  return (val);
+}
+
+
+/*
+ * flexmem_template
+ *
+ * INPUT
+ * S SEXP   A mktemp-style tempate string
+ *
+ * Always returns R_NilValue.
+ */
+
+SEXP
+flexmem_template (SEXP S)
+{
+  void *handle;
+  void (*set_template)(char *);
+  char *derror;
+  char *temp = (char *)CHAR (STRING_ELT (S, 0));
+
+  handle = dlopen (NULL, RTLD_LAZY);
+  if (!handle) {
+      error ("%s\n",dlerror ());
+      return R_NilValue;
+  }
+  dlerror ();
+  set_template = (void (*)(char *))dlsym(handle, "flexmem_set_template");
+  if ((derror = dlerror ()) != NULL)  {
+      error ("%s\n",dlerror ());
+      return R_NilValue;
+  }
+
+  (*set_template)(temp);
+  dlclose (handle);
+  return (R_NilValue);
+}
+
 
 }

@@ -22,7 +22,8 @@ class MemoryMappedFile : public noncopyable
     _filename(filename)
     {
       FILE *fp = fopen(filename.c_str(), "wb");
-      if (-1 == ftruncate( fileno(fp), length) ) {
+      if (-1 == ftruncate( fileno(fp), length) ) 
+      {
         fclose(fp);
         throw(
           runtime_error(

@@ -90,6 +90,17 @@ to allocate data structures that are limited in size by hard drive space,
 not RAM. And R, along with its associated packages is able to make use
 of this new functionality with no changes whatsoever.
 
+The source code along with a Makefile to create the \pkg{flexmem} DLL, which 
+includes the alternative memory allocator, is included in the packages inst 
+directory. To create file-backed, native R object, users can navigate to the
+inst directory and type \code{Make Linux} or \code{Make Mac} depending on the
+platform. The \pkg{flexmem} package currently does not support Windows and
+this limitation is discussed further in the ``Platform limitation'' section.
+The last line of output from make provides the command to set the preload
+variable (discussed above). After this output is copied and pasted into the
+terminal any applications started from that terminal will include \code{flexmem}
+functionality, including R.
+
 <GIVE INSTRUCTIONS FOR USING FLEXMEM AND VERIFYING THAT IT WORKS HERE>
 
 \section{Managing implicit copying with R5 reference objects}
@@ -161,6 +172,12 @@ A.~D and C.~Glaser and O.~Nenadic and J. Oehlschl\"agel and W.~Zucchini.
 \newblock {\em ff: memory-efficient storage of large data on disk and fast access functions}, 2012.
 \newblock URL \url{http:CRAN.R-project.org/package=ff}.
 \newblock R package version 2.2-10.
+
+bibitem[Hunt and Brubacher(1999)]{HuntBrubacher1999}
+G.~Hunt and D.~Brubacher
+\newblock {\em Detours: Binary Interception of Win32 Functions}, 1999.
+\newblock {\em The Third USENIX Windows NT Symposium}, USENIX.
+\newblock URL \url{http://research.microsoft.com/pubs/68568/huntusenixnt99.pdf}
 
 %\bibitem[Ihaka and Gentleman(1996)]{R:Ihaka+Gentleman:1996}
 %R.~Ihaka and R.~Gentleman.
