@@ -19,7 +19,7 @@ string *flexmem_fname_template;
 extern "C" {
 
 int flexmem_verbose = 0;
-size_t flexmem_size_threshold = 1000000;
+size_t flexmem_size_threshold = 4000000;
 void (*flexmem_default_free) (void *);
 void *(*flexmem_default_malloc) (size_t);
 void *(*flexmem_default_realloc) (void *, size_t);
