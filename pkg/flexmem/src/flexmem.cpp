@@ -18,7 +18,7 @@ string *flexmem_fname_template;
 
 extern "C" {
 
-int flexmem_verbose = 1;
+int flexmem_verbose = 0;
 size_t flexmem_size_threshold = 1000000;
 void (*flexmem_default_free) (void *);
 void *(*flexmem_default_malloc) (size_t);
@@ -53,7 +53,8 @@ void flexmem_init()
   flexmem_default_calloc =
     (void *(*)(size_t, size_t)) dlsym (RTLD_NEXT, "calloc");
   mmfm = new MemoryMappedFileManager();
-  flexmem_fname_template = new string("/tmp/FlexmemTempFileXXXXXX");
+  if (!flexmem_fname_template)
+    flexmem_fname_template = new string("/tmp/FlexmemTempFileXXXXXX");
 }
 
 void* malloc(size_t size)
@@ -78,12 +79,13 @@ void* malloc(size_t size)
       return NULL;
     }
     if (flexmem_verbose) {
-      printf("mmap malloc called for allocation of size %d\n", size);
+      printf("mmap malloc called with name %s for allocation of size %d\n", 
+        temp.c_str(), (int)size);
     }
     return pret;
   }  
-  if (flexmem_verbose) {
-    printf("malloc called for allocation of size %d\n", size);
+  if (flexmem_verbose) 
+    printf("malloc called for allocation of size %d\n", (int)size);
   return (*flexmem_default_malloc)(size);
 }
 
@@ -128,7 +130,7 @@ void* realloc (void *ptr, size_t size)
   if ( (NULL != pmmf) && size < flexmem_size_threshold)
   {
     if (flexmem_verbose) 
-      printf("realloc called for memory of size %d.\n", size)
+      printf("realloc called for memory of size %d.\n", (int)size);
     return (*flexmem_default_realloc)(ptr, size);
   }
  
@@ -136,7 +138,7 @@ void* realloc (void *ptr, size_t size)
   p = malloc(size);
   memcpy(p, ptr, size);
   if (flexmem_verbose) 
-    printf("realloc called for memory of size %d.\n", size)
+    printf("realloc called for memory of size %d.\n", (int)size);
   free(ptr);
   return p;
 }
@@ -144,7 +146,7 @@ void* realloc (void *ptr, size_t size)
 void* flexmem_calloc(size_t count, size_t size)
 {
   if (flexmem_verbose)
-    printf("calloc called... ")
+    printf("calloc called... ");
   return malloc(count * size);
 }
 
