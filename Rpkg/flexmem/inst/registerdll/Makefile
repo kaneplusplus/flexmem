@@ -12,3 +12,6 @@ flexmem:
 
 clean:
 	rm -f *.so *.o 
+
+install:
+	mv libflexmem.so /usr/local/lib/

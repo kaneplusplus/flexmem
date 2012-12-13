@@ -1,0 +1,26 @@
+#!/usr/bin/python
+
+import os, sys
+
+# Note that this is an initial version for the flexmem launcher.
+# The launcher adds a preload environment variable to the shell, which
+# points to the shared object file overriding C memory management 
+# functions.
+
+# The preload environment variable on the Mac is DYLD_INSERT_LIBRARIES.
+preloadVar = "LD_PRELOAD"
+flexmemSoPath = "/usr/local/lib/libflexmem.so"
+
+if (os.uname()[0] != "Linux"):
+  raise(Exception("Unsupported platform"))
+  
+if not os.path.exists(flexmemSoPath):
+  raise(Exception("The flexmem shared object file could not be found"))
+
+if preloadVar in os.environ.keys():
+  os.environ.keys[preloadVar] += flexmemSoPath
+else:
+  os.environ.keys[preloadVar] = flexmemSoPath
+
+os.system(reduce(lambda x, y: x+" "+y, sys.argv[1:]))
+
