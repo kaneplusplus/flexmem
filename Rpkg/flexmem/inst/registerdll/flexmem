@@ -18,9 +18,9 @@ if not os.path.exists(flexmemSoPath):
   raise(Exception("The flexmem shared object file could not be found"))
 
 if preloadVar in os.environ.keys():
-  os.environ.keys[preloadVar] += flexmemSoPath
+  os.environ[preloadVar] += flexmemSoPath
 else:
-  os.environ.keys[preloadVar] = flexmemSoPath
+  os.environ[preloadVar] = flexmemSoPath
 
 os.system(reduce(lambda x, y: x+" "+y, sys.argv[1:]))
 

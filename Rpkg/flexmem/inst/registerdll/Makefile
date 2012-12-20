@@ -4,14 +4,18 @@
 #Mac: sharedobject
 #	export DYLD_INSERT_LIBRARIES="$(PWD)/flexmem.so"
 
-sharedobject: flexmem 
+sharedobject: flexmemobject
 	g++ -shared flexmem.o -o libflexmem.so -ldl 
 
-flexmem:
-	g++ -I/opt/local/include -I../include -fPIC -g -c -o flexmem.o flexmem.cpp
+flexmemobject:
+	g++ -I../include -fPIC -o2 -c -o flexmem.o flexmem.cpp
 
 clean:
 	rm -f *.so *.o 
 
 install:
+<<<<<<< HEAD
 	mv libflexmem.so /usr/local/lib/ && mv flexmem /usr/local/bin/
+=======
+	cp libflexmem.so /usr/local/lib/ && cp flexmem /usr/local/bin/
+>>>>>>> 1f550b9d2044d819f60d7c4a1ca905dd8ce61660
