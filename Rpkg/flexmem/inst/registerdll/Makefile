@@ -14,8 +14,4 @@ clean:
 	rm -f *.so *.o 
 
 install:
-<<<<<<< HEAD
-	mv libflexmem.so /usr/local/lib/ && mv flexmem /usr/local/bin/
-=======
 	cp libflexmem.so /usr/local/lib/ && cp flexmem /usr/local/bin/
->>>>>>> 1f550b9d2044d819f60d7c4a1ca905dd8ce61660
