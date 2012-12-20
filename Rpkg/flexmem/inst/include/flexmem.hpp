@@ -1,4 +1,6 @@
 #include <fcntl.h>
+#include <syst/types.h>
+#include <unistd.h>
 
 #include <exception>
 #include <map>
@@ -18,8 +20,9 @@ class MemoryMappedFile : public noncopyable
 {
   public:
 
-    MemoryMappedFile(const string filename, const size_t length) : 
-    _filename(filename)
+    MemoryMappedFile(const string filename, const size_t length, 
+      const bool keepBacking=false) : _filename(filename), 
+      _keepBacking(keepBacking)
     {
       FILE *fp = fopen(filename.c_str(), "wb");
       if (-1 == ftruncate( fileno(fp), length) ) 
@@ -36,19 +39,23 @@ class MemoryMappedFile : public noncopyable
 
       file_mapping fm(_filename.c_str(), read_write);
       _mr = mapped_region(fm, read_write);
+      _pid = getpid();
     }
     
     void destroy()
     {
       file_mapping::remove(_filename.c_str());
-      unlink(_filename.c_str());
+      // If the MMF was created by the current process (wasn't forked) and
+      // its backing shouldn't be kept, then unlink it.
+      if (!_keepBacking & getpid() == _pid)
+        unlink(_filename.c_str());
     }
 
     ~MemoryMappedFile() {}
 
   public:
     
-    void* address() const
+    void* address() const 
     {
       return _mr.get_address();
     }
@@ -58,9 +65,21 @@ class MemoryMappedFile : public noncopyable
       return _filename;
     }
 
+    void keep_backing(const bool keepBacking) 
+    {
+      _keepBacking = keepBacking
+    }
+
+    const bool keep_backing() const 
+    {
+      return _keepBacking
+    }
+
   protected:
     mapped_region _mr;
     string _filename;
+    pid_t _pid;
+    bool _keepBacking;
 };
 
 // A data structure to hold, add, and remove memory mapped files.
