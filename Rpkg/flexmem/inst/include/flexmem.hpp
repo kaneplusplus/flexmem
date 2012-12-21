@@ -1,5 +1,5 @@
 #include <fcntl.h>
-#include <syst/types.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <exception>
@@ -67,12 +67,12 @@ class MemoryMappedFile : public noncopyable
 
     void keep_backing(const bool keepBacking) 
     {
-      _keepBacking = keepBacking
+      _keepBacking = keepBacking;
     }
 
     const bool keep_backing() const 
     {
-      return _keepBacking
+      return _keepBacking;
     }
 
   protected:
