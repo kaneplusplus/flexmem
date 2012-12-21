@@ -1,6 +1,16 @@
 #!/usr/bin/python
 
-import os, sys
+import os, sys, argparse
+
+minThreshold = 300000
+
+def parseArgs():
+  parser = argparse.ArgumentParser()
+  parser.add_argument("command", help="The command to launch with flexmem")
+  parser.add_argument("-t", "--threshold", type="str", default=None,
+    help="The threshold (in bytes) for filemapping allocated memory. "+
+      "It must be greater than " + minThreshold+".")
+#  parser.add_argument("-p", "--path-template"
 
 # Note that this is an initial version for the flexmem launcher.
 # The launcher adds a preload environment variable to the shell, which
