@@ -58,6 +58,8 @@ void flexmem_init()
     (void *(*)(size_t, size_t)) dlsym (RTLD_NEXT, "calloc");
   mmfm = new MemoryMappedFileManager();
   if (!flexmem_fname_template)
+  {
+    flexmem_fname_template = new string(getenv(
     flexmem_fname_template = new string("/tmp/FlexmemTempFileXXXXXX");
   
 }
