@@ -67,12 +67,12 @@ class MemoryMappedFile : public noncopyable
 
     void keep_backing(const bool keepBacking) 
     {
-      _keepBacking = keepBacking
+      _keepBacking = keepBacking;
     }
 
     const bool keep_backing() const 
     {
-      return _keepBacking
+      return _keepBacking;
     }
 
   protected:

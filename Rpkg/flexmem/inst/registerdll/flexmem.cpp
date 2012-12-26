@@ -5,10 +5,20 @@
 #include <string>
 using namespace std;
 
+// Recursive mutexes are used to provide thread safety.
+#include <boost/thread/recursive_mutex.hpp>
+using namespace boost;
+
 #include "flexmem.hpp"
 
 MemoryMappedFileManager *mmfm;
 string *flexmem_fname_template;
+
+recursive_mutex& mem_mutex()
+{
+  static recursive_mutex m;
+  return m;
+}
 
 extern "C" {
 
@@ -48,11 +58,15 @@ void flexmem_init()
     (void *(*)(size_t, size_t)) dlsym (RTLD_NEXT, "calloc");
   mmfm = new MemoryMappedFileManager();
   if (!flexmem_fname_template)
+  {
+    flexmem_fname_template = new string(getenv(
     flexmem_fname_template = new string("/tmp/FlexmemTempFileXXXXXX");
+  
 }
 
 void* malloc(size_t size)
 {
+  lock_guard<recursive_mutex> _(mem_mutex());
   if (!flexmem_default_free)
     flexmem_init();
 
@@ -81,6 +95,7 @@ void* malloc(size_t size)
 
 void free(void *ptr)
 {
+  lock_guard<recursive_mutex> _(mem_mutex());
   if (!flexmem_default_free)
     flexmem_init();
 
@@ -101,6 +116,7 @@ void free(void *ptr)
 
 void* realloc (void *ptr, size_t size)
 {
+  lock_guard<recursive_mutex> _(mem_mutex());
   if (NULL == ptr)
     return malloc(size);
 
@@ -135,6 +151,7 @@ void* realloc (void *ptr, size_t size)
 
 void* flexmem_calloc(size_t count, size_t size)
 {
+  lock_guard<recursive_mutex> _(mem_mutex());
   if (flexmem_verbose)
     printf("calloc called... ");
   return malloc(count * size);
