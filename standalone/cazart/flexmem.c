@@ -15,7 +15,8 @@
 #define FLEXMEM_MAX_PATH_LEN 4096
 
 #undef DEBUG
-#define DEBUG
+//#define DEBUG
+#define DEBUG2
 
 
 
@@ -50,19 +51,12 @@
  * portable?
  *
  * Should we have used the GNU libc hooks instead? We knew you would ask, and
- * we do abuse them in our Frankenstein calloc function. Generally though, the
- * hooks don't work so well in our application.
+ * we do abuse them in our Frankenstein calloc function. But in general the
+ * hooks are not well-suited to this application.
  *
  * Be cautious when debugging about placement of printf, write, etc. These
  * things often end up re-entering one of our functions.
  */
-
-static void flexmem_init (void) __attribute__ ((constructor));
-static void *(*flexmem_hook) (size_t, const void *);
-
-char flexmem_fname_template[FLEXMEM_MAX_PATH_LEN] = "/tmp/fm_XXXXXX";
-size_t flexmem_threshold = 1000000;
-volatile int READY = 0;
 
 /* The map data structure stores information about a particular
  * mapping.
@@ -74,6 +68,15 @@ struct map
   size_t length;                /* Mapping length */
   UT_hash_handle hh;            /* Make this thing uthash-hashable */
 };
+
+static void flexmem_init (void) __attribute__ ((constructor));
+static void flexmem_finalize (void) __attribute__ ((destructor));
+static void *(*flexmem_hook) (size_t, const void *);
+void freemap (struct map *);
+
+char flexmem_fname_template[FLEXMEM_MAX_PATH_LEN] = "/tmp/fm_XXXXXX";
+size_t flexmem_threshold = 1000000;
+volatile int READY = 0;
 
 /* The global variable flexmap is a key-value list of addresses (keys)
  * and file paths (values).
@@ -93,6 +96,32 @@ flexmem_init ()
   omp_init_nest_lock (&lock);
   READY++;
   if(!flexmem_hook) flexmem_hook = __malloc_hook;
+}
+
+/* Flexmem finalization
+ * Remove any left over allocations and deallocate the map.
+ * (We take advantage of the delete-safe uthash iterator.)
+ */
+static void
+flexmem_finalize ()
+{
+  struct map *m, *tmp;
+  omp_set_nest_lock (&lock);
+  HASH_ITER(hh, flexmap, m, tmp)
+  {
+    munmap (m->addr, m->length);
+#if defined(DEBUG) || defined(DEBUG2)
+    printf ("Flexmem unmap address %p of size %lu\n", m->addr,
+            (unsigned long int) m->length);
+#endif
+    unlink (m->path);
+    HASH_DEL (flexmap, m);
+    freemap (m);
+  }
+  omp_unset_nest_lock (&lock);
+#if defined(DEBUG) || defined(DEBUG2)
+  printf("Flexmem finalized\n");
+#endif
 }
 
 // XXX What about a finalizer for when the library is unloaded?!?!?
@@ -127,6 +156,7 @@ flexmem_set_template (char *name)
 // XXX add a flexmem_get_template ??
 // XXX add a flexmem_get_file(void *address) function to look up a file
 // XXX in the hash?
+// XXX Also add a list mappings api function??
 
 void
 freemap (struct map *m)
@@ -158,9 +188,8 @@ malloc (size_t size)
   if (size > flexmem_threshold && READY)
     {
       m = (struct map *) ((*flexmem_default_malloc) (sizeof (struct map)));
-//      m->path = (char *) ((*flexmem_default_calloc) (sizeof(char), FLEXMEM_MAX_PATH_LEN));
       m->path = (char *) ((*flexmem_default_malloc) (FLEXMEM_MAX_PATH_LEN));
-      bzero (m->path, FLEXMEM_MAX_PATH_LEN);
+      memset(m->path,0,FLEXMEM_MAX_PATH_LEN);
 // XXX THERE NEEDS TO BE A LOCK AROUND THE TEMPLATE ACCESS
       strncpy (m->path, flexmem_fname_template, FLEXMEM_MAX_PATH_LEN);
       m->length = size;
@@ -177,13 +206,14 @@ malloc (size_t size)
         mmap (NULL, m->length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
       x = m->addr;
       close (fd);
-#ifdef DEBUG
+#if defined(DEBUG) || defined(DEBUG2)
       printf ("Flexmem malloc address %p, size %lu, file  %s\n", m->addr,
               (unsigned long int) m->length, m->path);
 #endif
       omp_set_nest_lock (&lock);
+// XXX Add check for key and bail here (see realloc)
       HASH_ADD_PTR (flexmap, addr, m);
-#ifdef DEBUG
+#if defined(DEBUG) || defined(DEBUG2)
       printf ("count = %u\n", HASH_COUNT (flexmap));
 #endif
       omp_unset_nest_lock (&lock);
@@ -212,7 +242,7 @@ free (void *ptr)
       if (m)
         {
           munmap (ptr, m->length);
-#ifdef DEBUG
+#if defined(DEBUG) || defined(DEBUG2)
           printf ("Flexmem unmap address %p of size %lu\n", ptr,
                   (unsigned long int) m->length);
 #endif
@@ -232,7 +262,7 @@ free (void *ptr)
 void *
 realloc (void *ptr, size_t size)
 {
-  struct map *m;
+  struct map *m, *y;
   int j, fd;
   void *x;
   void *(*flexmem_default_realloc) (void *, size_t);
@@ -272,10 +302,19 @@ realloc (void *ptr, size_t size)
             goto bail;
           m->addr =
             mmap (NULL, m->length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+/* Check for existence of the address in the hash. It must not already exist,
+ * if it does something is wrong and we bail.
+ */
+          HASH_FIND_PTR (flexmap, &ptr, y);
+          if(y)
+          {
+            munmap (m->addr, m->length);
+            goto bail;
+          }
           HASH_ADD_PTR (flexmap, addr, m);
           x = m->addr;
           close (fd);
-#ifdef DEBUG
+#if defined(DEBUG) || defined(DEBUG2)
           printf ("Flexmem realloc address %p size %lu\n", ptr,
                   (unsigned long int) m->length);
 #endif
@@ -306,7 +345,7 @@ calloc (size_t count, size_t size)
   size_t n = count * size;
   if (READY && n > flexmem_threshold)
     {
-#ifdef DEBUG
+#if defined(DEBUG) || defined(DEBUG2)
       printf ("Flexmem calloc...handing off to flexmem malloc\n");
 #endif
       return malloc (n);
