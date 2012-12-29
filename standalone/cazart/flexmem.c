@@ -88,6 +88,8 @@ void *(*flexmem_global_malloc) (size_t);
 /* Flexmem initialization
  *
  * Initializes synchronizing lock variable and address/file key/value map.
+ * This function may be called multiple times, be aware of that and keep
+ * this as tiny/simple as possible and thread-safe.
  *
  */
 static void
@@ -101,6 +103,7 @@ flexmem_init ()
 /* Flexmem finalization
  * Remove any left over allocations and deallocate the map.
  * (We take advantage of the delete-safe uthash iterator.)
+ * This is the last function run before the library is unloaded.
  */
 static void
 flexmem_finalize ()
@@ -123,10 +126,6 @@ flexmem_finalize ()
   printf("Flexmem finalized\n");
 #endif
 }
-
-// XXX What about a finalizer for when the library is unloaded?!?!?
-// XXX Add this...
-
 
 /* The next functions allow applications to inspect and change default
  * settings. The application must dynamically locate them with dlsym after the
@@ -158,6 +157,8 @@ flexmem_set_template (char *name)
 // XXX in the hash?
 // XXX Also add a list mappings api function??
 
+
+/* freemap is a utility function that deallocates the supplied map structure */
 void
 freemap (struct map *m)
 {
@@ -175,7 +176,7 @@ freemap (struct map *m)
 void *
 malloc (size_t size)
 {
-  struct map *m;
+  struct map *m, *y;
   void *x;
   int j;
   int fd;
@@ -211,10 +212,22 @@ malloc (size_t size)
               (unsigned long int) m->length, m->path);
 #endif
       omp_set_nest_lock (&lock);
-// XXX Add check for key and bail here (see realloc)
-      HASH_ADD_PTR (flexmap, addr, m);
+/* Check to make sure that this address is not already in the hash. If it is,
+ * then something is terribly wrong and we must bail.
+ */
+      HASH_FIND_PTR (flexmap, m->addr, y);
+      if(y)
+      {
+        munmap (m->addr, m->length);
+        unlink (m->path);
+        freemap (m);
+        x = NULL;
+      } else
+      {
+        HASH_ADD_PTR (flexmap, addr, m);
+      }
 #if defined(DEBUG) || defined(DEBUG2)
-      printf ("count = %u\n", HASH_COUNT (flexmap));
+      printf ("hash count = %u\n", HASH_COUNT (flexmap));
 #endif
       omp_unset_nest_lock (&lock);
     }
@@ -303,7 +316,8 @@ realloc (void *ptr, size_t size)
           m->addr =
             mmap (NULL, m->length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 /* Check for existence of the address in the hash. It must not already exist,
- * if it does something is wrong and we bail.
+ * (after all we just removed it and we hold the lock)--if it does something
+ * is terribly wrong and we bail.
  */
           HASH_FIND_PTR (flexmap, &ptr, y);
           if(y)
