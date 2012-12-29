@@ -37,52 +37,52 @@ int main (int argc, void **argv)
     }
 
     (*set_threshold)(&SIZE);
-    printf("API returns SIZE=%lu\n",SIZE);
+    printf("> API returns SIZE=%lu\n",SIZE);
     dlclose (handle);
 
-    printf("malloc below threshold\n");
+    printf("> malloc below threshold\n");
     x = malloc(SIZE - 1);
     memcpy (x, (const void *) y, strlen (y));
-    printf ("(press a key to continue)\n");
+    printf ("> (press a key to continue)\n");
     getc(stdin);
     free (x);
 
-    printf("malloc above threshold\n");
+    printf("> malloc above threshold\n");
     x = malloc(SIZE + 1);
     memcpy (x, (const void *) y, strlen (y));
-    printf ("(press a key to continue)\n");
+    printf ("> (press a key to continue)\n");
     getc(stdin);
     free (x);
 
 
-    printf("calloc below threshold\n");
+    printf("> calloc below threshold\n");
     x = calloc(SIZE - 1,1);
     memcpy (x, (const void *) y, strlen (y));
-    printf ("(press a key to continue)\n");
+    printf ("> (press a key to continue)\n");
     getc(stdin);
     free (x);
 
-    printf("calloc above threshold\n");
+    printf("> calloc above threshold\n");
     x = calloc(SIZE + 1,1);
     memcpy (x, (const void *) y, strlen (y));
-    printf ("(press a key to continue)\n");
+    printf ("> (press a key to continue)\n");
     getc(stdin);
     free (x);
 
 
-    printf("malloc + realloc below threshold\n");
+    printf("> malloc + realloc below threshold\n");
     x = malloc(SIZE - 1);
     x = realloc(x, SIZE + 1);
     memcpy (x, (const void *) y, strlen (y));
-    printf ("(press a key to continue)\n");
+    printf ("> (press a key to continue)\n");
     getc(stdin);
     free (x);
 
-    printf("malloc + realloc above threshold\n");
+    printf("> malloc + realloc above threshold\n");
     x = malloc(SIZE + 1);
     x = realloc(x, SIZE + 10);
     memcpy (x, (const void *) y, strlen (y));
-    printf ("(press a key to continue)\n");
+    printf ("> (press a key to continue)\n");
     getc(stdin);
     free (x);
 

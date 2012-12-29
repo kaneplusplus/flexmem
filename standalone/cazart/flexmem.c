@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <malloc.h>
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
@@ -47,11 +48,15 @@
  * portable?
  *
  * Should we have used the GNU libc hooks instead? We knew you would ask, and
- * don't have a good answer.
+ * we do abuse them in our Frankenstein calloc function. Generally though, the
+ * hooks don't work so well in our application.
  *
+ * Be cautious when debugging about placement of printf, write, etc. These
+ * things often end up calling one of our functions, re-entering them.
  */
 
 static void flexmem_init(void) __attribute__((constructor));
+static void *(*flexmem_hook) (size_t, const void *);
 
 char flexmem_fname_template[FLEXMEM_MAX_PATH_LEN] = "/tmp/fm_XXXXXX";
 size_t flexmem_threshold = 1000000;
@@ -85,7 +90,7 @@ flexmem_init ()
 {
   omp_init_nest_lock(&lock);
   READY=1;
-write(1,"ELMO!\n",6);
+  flexmem_hook = __malloc_hook;
 }
 
 
@@ -131,7 +136,9 @@ malloc (size_t size)
   void *x;
   int j;
   int fd;
-  void *(*flexmem_default_malloc) (size_t) = (void *(*)(size_t)) dlsym (RTLD_NEXT, "malloc");
+  void *(*flexmem_default_malloc) (size_t);
+
+  flexmem_default_malloc = (void *(*)(size_t)) dlsym (RTLD_NEXT, "malloc");
 //  void *(*flexmem_default_calloc) (size_t, size_t) = (void *(*)(size_t, size_t)) dlsym (RTLD_NEXT, "calloc");
 
 #ifdef DEBUG
@@ -270,29 +277,26 @@ bail:
   return NULL;
 }
 
-
-/* calloc is a special case. Unfortunately, dlsym uses strdupa which calls calloc,
- * thus a direct interposition here results in an infinite loop...
+/* calloc is a special case. Unfortunately, dlsym ultimately calls calloc,
+ * thus a direct interposition here results in an infinite loop...We created
+ * a fake calloc that relies on malloc, and avoids looking it up by abusing the
+ * malloc.h hooks library. We told you this was a hack!
  */
 void *
-xxxcalloc(size_t count, size_t size)
+calloc(size_t count, size_t size)
 {
-write(1,"HOMER\n",6);
-sleep(1);
   void *x;
-  size_t n;
-  void *(*flexmem_default_malloc) (size_t) = (void *(*)(size_t)) dlsym (RTLD_NEXT, "malloc");
-write(1,"12345\n",6);
-  n = count * size;
-  if(READY && size > flexmem_threshold)
+  size_t n = count*size;
+  if(READY && n > flexmem_threshold)
   {
 #ifdef DEBUG
-      printf ("Flexmem calloc\n");
+      printf ("Flexmem calloc...handing off to flexmem malloc\n");
 #endif
     return malloc(n);
   }
-  x = (*flexmem_default_malloc) (n);
-  return memset (x,0,n);
+  x = flexmem_hook(n, NULL);
+  memset(x, 0, n);
+  return x;
 }
 
 
