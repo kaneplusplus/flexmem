@@ -91,8 +91,8 @@ static void
 flexmem_init ()
 {
   omp_init_nest_lock (&lock);
-  READY = 1;
-  flexmem_hook = __malloc_hook;
+  READY++;
+  if(!flexmem_hook) flexmem_hook = __malloc_hook;
 }
 
 // XXX What about a finalizer for when the library is unloaded?!?!?
@@ -311,6 +311,7 @@ calloc (size_t count, size_t size)
 #endif
       return malloc (n);
     }
+  if(!flexmem_hook) flexmem_init();
   x = flexmem_hook (n, NULL);
   memset (x, 0, n);
   return x;
