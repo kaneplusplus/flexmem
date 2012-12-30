@@ -8,6 +8,8 @@
 #include <string.h>
 #include <dlfcn.h>
 
+void testfunc(void);
+
 int main (int argc, void **argv)
 {
     int j;
@@ -16,29 +18,15 @@ int main (int argc, void **argv)
     size_t SIZE = 1000000;
 
     void *handle;
-    void (*set_threshold)(size_t *);
-    void (*set_template)(char *);
     char *error;
-    handle = dlopen (NULL, RTLD_LAZY);
+    void (*testfunc)(void);
+    handle = dlopen ("./testlib.so", RTLD_NOW);
+    *(void **) (&testfunc) = dlsym(handle, "testfunc");
     if (!handle) {
         fprintf (stderr, "%s\n", dlerror());
         exit(1);
     }
-    dlerror(); 
-    *(void **) (&set_threshold) = dlsym(handle, "flexmem_set_threshold");
-    if ((error = dlerror()) != NULL)  {
-        fprintf (stderr, "%s\n", error);
-        exit(1);
-    }
-    *(void **) (&set_template) = dlsym(handle, "flexmem_set_template");
-    if ((error = dlerror()) != NULL)  {
-        fprintf (stderr, "%s\n", error);
-        exit(1);
-    }
-
-    (*set_threshold)(&SIZE);
-    printf("> API returns SIZE=%lu\n",SIZE);
-    dlclose (handle);
+    (*testfunc)();
 
     printf("> malloc below threshold\n");
     x = malloc(SIZE - 1);

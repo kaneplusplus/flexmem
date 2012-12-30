@@ -7,10 +7,11 @@
 all: lib test
 
 lib:
-	gcc -Wall -fopenmp -I. -fPIC -pie -o libflexmem.so flexmem.c -Wl,-E -ldl
+	gcc -Wall -fopenmp -I. -fPIC -shared -o libflexmem.so flexmem.c -Wl,-E -ldl
 
 clean:
 	rm -f *.so *.o  test
 
 test:
+	$(CC) -shared -o testlib.so testlib.c
 	$(CC) -o test test.c -ldl

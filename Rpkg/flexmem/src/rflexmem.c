@@ -14,14 +14,14 @@
  * SEXP     Threshold set point or R_NilValue on error
  *
  */
-
+/*
 SEXP
 flexmem_threshold (SEXP J)
 {
-  SEXP val;
+  SEXP VAL;
   void *handle;
-  size_t SIZE;
-  void (*set_threshold)(size_t *);
+  size_t size;
+  size_t (*set_threshold)(size_t );
   char *derror;
 
   handle = dlopen (NULL, RTLD_LAZY);
@@ -30,21 +30,20 @@ flexmem_threshold (SEXP J)
       return R_NilValue;
   }
   dlerror ();
-  set_threshold = (void (*)(size_t*))dlsym(handle, "flexmem_set_threshold");
+  set_threshold = (size_t (*)(size_t ))dlsym(handle, "flexmem_set_threshold");
   if ((derror = dlerror ()) != NULL)  {
       error ("%s\n",dlerror ());
       return R_NilValue;
   }
-
-  PROTECT (val = allocVector(REALSXP, 1));
-  SIZE = (size_t) *(REAL (J));
-  (*set_threshold)(&SIZE);
-  REAL(val)[0] = (double) SIZE;
   dlclose (handle);
-  UNPROTECT (1);
-  return (val);
-}
 
+  PROTECT (VAL = allocVector(REALSXP, 1));
+  size = (size_t) *(REAL (J));
+  REAL(VAL)[0] = (double) (*set_threshold)(size);
+  UNPROTECT (1);
+  return (VAL);
+}
+*/
 
 /*
  * flexmem_template
@@ -54,7 +53,7 @@ flexmem_threshold (SEXP J)
  *
  * Always returns R_NilValue.
  */
-
+/*
 SEXP
 flexmem_template (SEXP S)
 {
@@ -79,4 +78,4 @@ flexmem_template (SEXP S)
   dlclose (handle);
   return (R_NilValue);
 }
-
+*/

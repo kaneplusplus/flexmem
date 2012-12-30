@@ -1,5 +1,6 @@
 
-#' Retrieve or change the threshold where data structures will be file-backed.
+#' Retrieve and/or change the threshold where data structures will be
+#' file-backed.
 #'
 #' @param nbytes the new threshold (in bytes)
 #' @seealso \code{\link{flexmem_template}}
@@ -9,7 +10,7 @@
 #' \dontrun{
 #' flexmem_threshold(flexmem_threshold()+1000)
 #' }
-flexmem_threshold <- function(nbytes=1000) {
+flexmem_threshold <- function(nbytes=1e9) {
   print( .Call("flexmem_threshold", as.numeric(nbytes), PACKAGE="flexmem") )
 }
 
