@@ -10,7 +10,7 @@
 #' \dontrun{
 #' flexmem_threshold(flexmem_threshold()+1000)
 #' }
-flexmem_threshold <- function(nbytes=1e9)
+flexmem_threshold <- function(nbytes=0)
 {
   .Call("Rflexmem_threshold", as.numeric(nbytes), PACKAGE="flexmem")
 }

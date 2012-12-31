@@ -15,8 +15,7 @@
 #define FLEXMEM_MAX_PATH_LEN 4096
 
 #undef DEBUG
-//#define DEBUG
-#define DEBUG2
+#undef DEBUG2
 
 
 /* NOTES
@@ -54,12 +53,13 @@ static void *(*flexmem_default_free) (void *);
 static void *(*flexmem_default_malloc) (size_t);
 static void *(*flexmem_default_realloc) (void *, size_t);
 void freemap (struct map *);
+static int READY = 0;
 
+/* These values can be changed using the crude API defined below. */
 static char flexmem_fname_template[FLEXMEM_MAX_PATH_LEN] = "/tmp/fm_XXXXXX";
 static char flexmem_fname_pattern[FLEXMEM_MAX_PATH_LEN] = "XXXXXX";
 static char flexmem_fname_path[FLEXMEM_MAX_PATH_LEN] = "/tmp";
-static size_t flexmem_threshold = 1000000;
-static int READY = 0;
+static size_t flexmem_threshold = 2000000000;
 
 /* The global variable flexmap is a key-value list of addresses (keys)
  * and file paths (values).
