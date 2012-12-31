@@ -13,5 +13,4 @@ clean:
 	rm -f *.so *.o  test
 
 test:
-	$(CC) -shared -o testlib.so testlib.c
 	$(CC) -o test test.c -ldl

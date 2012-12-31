@@ -10,25 +10,34 @@
 #' \dontrun{
 #' flexmem_threshold(flexmem_threshold()+1000)
 #' }
-flexmem_threshold <- function(nbytes=1e9) {
-  print( .Call("flexmem_threshold", as.numeric(nbytes), PACKAGE="flexmem") )
+flexmem_threshold <- function(nbytes=1e9)
+{
+  .Call("Rflexmem_threshold", as.numeric(nbytes), PACKAGE="flexmem")
 }
 
-#' Retrieve or change the template for temporary files in flexmem.
-#' 
-#' @param newTemplate the new template
-#' @seealso \code{\link{flexmem_threshold}}
-#' @export
-#' @examples
-#' # Change the template to create files in the current directory.
-#' \dontrun{
-#' flexmem_template("./")
-#' }
-#'
-flexmem_template <- function(newTemplate="./tmp/FlexMemXXXXXX") {
-  print( .Call("flexmem_template", as.character(newTemplate), 
-    PACKAGE="flexmem") )
+flexmem_set_pattern <- function(pattern="fm_XXXXXX")
+{
+  .Call("Rflexmem_set_pattern", as.character(pattern), PACKAGE="flexmem")
 }
+
+# Note, we use "tmp" instead of tempdir() here to correspond to default
+# value in libflexmem.so.
+flexmem_set_path <- function(path="/tmp")
+{
+# XXX validate path first.
+  .Call("Rflexmem_set_path", as.character(path), PACKAGE="flexmem")
+}
+
+flexmem_get_template <- function()
+{
+  .Call("Rflexmem_get_template", PACKAGE="flexmem")
+}
+
+flexmem_lookup <- function(object)
+{
+  .Call("Rflexmem_lookup", object, PACKAGE="flexmem")
+}
+
 
 #' The R5 Reference class
 #' 

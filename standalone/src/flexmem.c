@@ -210,23 +210,24 @@ flexmem_set_path (char *p)
   omp_unset_nest_lock (&lock);
   return 0;
 }
-/* Return a copy of the flexmem_fname_template (allocated on the stack
- * with alloca).
+/* Return a copy of the flexmem_fname_template (allocated internally...
+ * it is up to the caller to free the returned copy!! Yikes! My rationale
+ * is this--how could I trust a buffer provided by the caller?)
  */
 char *
 flexmem_get_template()
 {
   char *s;
   omp_set_nest_lock (&lock);
-  s = strndupa(flexmem_fname_template,FLEXMEM_MAX_PATH_LEN);
+  s = strndup(flexmem_fname_template,FLEXMEM_MAX_PATH_LEN);
   omp_unset_nest_lock (&lock);
   return s;
 }
-/* Lookup an address, returning NULL if the address is not found or a strdupa
- * stack-allocated copy of the backing file path for the address. No guarantee
+/* Lookup an address, returning NULL if the address is not found or a strdup
+ * locally-allocated copy of the backing file path for the address. No guarantee
  * is made that the address or backing file will be valid after this call, so
  * it's really up to the caller to make sure free is not called on the address
- * simultaneously with this call.
+ * simultaneously with this call. CALLER'S RESPONSIBILITY TO FREE RESULT!
  */
 char *
 flexmem_lookup(void *addr)
@@ -234,8 +235,8 @@ flexmem_lookup(void *addr)
   char *f = NULL;
   struct map *x;
   omp_set_nest_lock (&lock);
-  HASH_FIND_PTR (flexmap, addr, x);
-  if(x) f = strdupa(x->path);
+  HASH_FIND_PTR (flexmap, &addr, x);
+  if(x) f = strndup(x->path,FLEXMEM_MAX_PATH_LEN);
   omp_unset_nest_lock (&lock);
   return f;
 }

@@ -17,17 +17,6 @@ int main (int argc, void **argv)
     const char *y = "Cazart!";
     size_t SIZE = 1000000;
 
-    void *handle;
-    char *error;
-    void (*testfunc)(void);
-    handle = dlopen ("./testlib.so", RTLD_NOW);
-    *(void **) (&testfunc) = dlsym(handle, "testfunc");
-    if (!handle) {
-        fprintf (stderr, "%s\n", dlerror());
-        exit(1);
-    }
-    (*testfunc)();
-
     printf("> malloc below threshold\n");
     x = malloc(SIZE - 1);
     memcpy (x, (const void *) y, strlen (y));
