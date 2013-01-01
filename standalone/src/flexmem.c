@@ -372,9 +372,10 @@ void *
 realloc (void *ptr, size_t size)
 {
   struct map *m, *y;
-  int j, fd;
+  int j, fd, inchild;
   void *x;
   pid_t pid;
+  size_t copylen;
 #ifdef DEBUG
   fprintf(stderr,"realloc\n");
 #endif
@@ -404,6 +405,7 @@ realloc (void *ptr, size_t size)
  */
           munmap (ptr, m->length);
           pid = getpid();
+          inchild = 0;
           if(pid == m->pid)
           {
             HASH_DEL (flexmap, m);
@@ -411,15 +413,19 @@ realloc (void *ptr, size_t size)
             fd = open (m->path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
           } else
           {
-/* We're in a child process. We need to copy this mapping and create a new
- * map entry unique to the child.
+/* Uh oh. We're in a child process. We need to copy this mapping and create a
+ * new map entry unique to the child.  Also  need to copy old data up to min
+ * (size, m->length), this sucks.
  */
-// XXX Need to copy old data up to min (size, m->length)
+            y = m;
+            inchild = 1;
             m = (struct map *) ((*flexmem_default_malloc) (sizeof (struct map)));
             m->path = (char *) ((*flexmem_default_malloc) (FLEXMEM_MAX_PATH_LEN));
             memset(m->path,0,FLEXMEM_MAX_PATH_LEN);
             strncpy (m->path, flexmem_fname_template, FLEXMEM_MAX_PATH_LEN);
             m->length = size;
+            copylen = m->length;
+            if(y->length < copylen) copylen = y->length;
             fd = mkostemp (m->path, O_RDWR | O_CREAT);
           }
           if (fd < 0)
@@ -429,6 +435,8 @@ realloc (void *ptr, size_t size)
             goto bail;
           m->addr =
             mmap (NULL, m->length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+/* Here is the crummy child copy... */
+          if(inchild) memcpy(m->addr,y->addr,copylen);
           m->pid = getpid();
 /* Check for existence of the address in the hash. It must not already exist,
  * (after all we just removed it and we hold the lock)--if it does something
@@ -465,7 +473,7 @@ bail:
 /* calloc is a special case. Unfortunately, dlsym ultimately calls calloc,
  * thus a direct interposition here results in an infinite loop...We created
  * a fake calloc that relies on malloc, and avoids looking it up by abusing the
- * malloc.h hooks library. We told you this was a hack!
+ * malloc.h hooks library. This is much easier on BSD.
  */
 void *
 calloc (size_t count, size_t size)
