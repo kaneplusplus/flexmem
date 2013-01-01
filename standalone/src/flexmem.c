@@ -14,13 +14,15 @@
 #include "uthash.h"
 #include "flexmem.h"
 
-/* Library global state */
 static void flexmem_init (void) __attribute__ ((constructor));
 static void flexmem_finalize (void) __attribute__ ((destructor));
 static void *(*flexmem_hook) (size_t, const void *);
 static void *(*flexmem_default_free) (void *);
 static void *(*flexmem_default_malloc) (size_t);
+static void *(*flexmem_default_valloc) (size_t);
 static void *(*flexmem_default_realloc) (void *, size_t);
+
+/* Additional library state */
 void freemap (struct map *);
 static int READY = 0;
 
@@ -214,6 +216,25 @@ fprintf(stderr,"free %p \n",ptr);
   (*flexmem_default_free) (ptr);
 }
 
+/* valloc returns memory aligned to a page boundary.  Memory mapped flies are
+ * aligned to page boundaries, so we simply return our modified malloc when
+ * over the threshold. Otherwise, fall back to default valloc.
+ */
+void *
+valloc (size_t size)
+{
+  if (READY && size > flexmem_threshold)
+    {
+#if defined(DEBUG) || defined(DEBUG2)
+      fprintf(stderr,"Flexmem valloc...handing off to flexmem malloc\n");
+#endif
+      return malloc (size);
+    }
+  if(!flexmem_default_valloc)
+    flexmem_default_valloc =
+      (void *(*)(size_t)) dlsym (RTLD_NEXT, "valloc");
+  return flexmem_default_valloc(size);
+}
 
 /* Realloc is complicated in the case of fork. We have to protect parents from
  * wayward children and also maintain expected realloc behavior. See comments
@@ -320,6 +341,21 @@ bail:
   freemap (m);
   return NULL;
 }
+
+#ifdef OSX
+// XXX reallocf is a Mac OSX/BSD-specific function.
+void *
+reallocf (void *ptr, size_t size)
+{
+// XXX WRITE ME!
+  return reallocf(ptr, size);
+}
+# else
+// XXX memalign, posix_memalign are not in OSX/BSD, but are in Linux
+// and POSIX. Define them here.
+// XXX WRITE ME!
+#endif
+
 
 /* calloc is a special case. Unfortunately, dlsym ultimately calls calloc,
  * thus a direct interposition here results in an infinite loop...We created
