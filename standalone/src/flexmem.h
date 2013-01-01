@@ -3,7 +3,8 @@
 
 #define FLEXMEM_MAX_PATH_LEN 4096
 #undef DEBUG
-#define DEBUG2
+#undef DEBUG2
+#define DEBUG
 
 
 /* NOTES
@@ -32,10 +33,9 @@ struct map
 };
 
 
-
 /* These global values can be changed using the basic API defined in api.c. */
-static char flexmem_fname_template[FLEXMEM_MAX_PATH_LEN] = "/tmp/fm_XXXXXX";
-static size_t flexmem_threshold = 2000000000;
+extern char flexmem_fname_template[];
+extern size_t flexmem_threshold;
 
 /* The global variable flexmap is a key-value list of addresses (keys)
  * and file paths (values). The OpenMP lock is used widely in the library and

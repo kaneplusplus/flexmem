@@ -108,6 +108,7 @@ freemap (struct map *m)
     }
 }
 
+
 void *
 malloc (size_t size)
 {

@@ -10,6 +10,9 @@
 static char flexmem_fname_pattern[FLEXMEM_MAX_PATH_LEN] = "XXXXXX";
 static char flexmem_fname_path[FLEXMEM_MAX_PATH_LEN] = "/tmp";
 
+char flexmem_fname_template[FLEXMEM_MAX_PATH_LEN] = "/tmp/fm_XXXXXX";
+size_t flexmem_threshold = 2000000000;
+
 /* The next functions allow applications to inspect and change default
  * settings. The application must dynamically locate them with dlsym after
  * the library is loaded. They represent the flexmem API, such as it is.
