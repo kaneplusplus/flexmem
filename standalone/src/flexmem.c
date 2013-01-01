@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <sys/types.h>
 #include <malloc.h>
 #include <errno.h>
 #include <string.h>
@@ -15,7 +16,7 @@
 #define FLEXMEM_MAX_PATH_LEN 4096
 
 #undef DEBUG
-#undef DEBUG2
+#define DEBUG2
 
 
 /* NOTES
@@ -43,6 +44,7 @@ struct map
   void *addr;                   /* Memory address, list key */
   char *path;                   /* File path */
   size_t length;                /* Mapping length */
+  pid_t pid;                    /* Process ID of owner (for fork) */
   UT_hash_handle hh;            /* Make this thing uthash-hashable */
 };
 
@@ -81,15 +83,9 @@ flexmem_init ()
 write(2,"INIT \n",6);
 #endif
   if(READY < 1) omp_init_nest_lock (&lock);
-  READY++;
   if(!flexmem_hook) flexmem_hook = __malloc_hook;
-#ifdef DEBUG
-write(2,"I1 \n",4);
-#endif
   flexmem_default_free = (void *(*)(void *)) dlsym (RTLD_NEXT, "free");
-#ifdef DEBUG
-write(2,"I2 \n",4);
-#endif
+  READY=1;
 }
 
 /* Flexmem finalization
@@ -100,6 +96,7 @@ static void
 flexmem_finalize ()
 {
   struct map *m, *tmp;
+  pid_t pid;
   READY = 0;
   omp_set_nest_lock (&lock);
   HASH_ITER(hh, flexmap, m, tmp)
@@ -109,9 +106,13 @@ flexmem_finalize ()
     fprintf(stderr,"Flexmem unmap address %p of size %lu\n", m->addr,
             (unsigned long int) m->length);
 #endif
-    unlink (m->path);
-    HASH_DEL (flexmap, m);
-    freemap (m);
+    pid = getpid();
+    if(pid == m->pid)
+    {
+      unlink (m->path);
+      HASH_DEL (flexmap, m);
+      freemap (m);
+    }
   }
   omp_unset_nest_lock (&lock);
 #if defined(DEBUG) || defined(DEBUG2)
@@ -288,6 +289,7 @@ malloc (size_t size)
         }
       m->addr =
         mmap (NULL, m->length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+      m->pid = getpid();
       x = m->addr;
       close (fd);
 #if defined(DEBUG) || defined(DEBUG2)
@@ -327,6 +329,7 @@ void
 free (void *ptr)
 {
   struct map *m;
+  pid_t pid;
   if (!ptr)
     return;
   if (READY)
@@ -343,21 +346,25 @@ fprintf(stderr,"free %p \n",ptr);
           fprintf(stderr,"Flexmem unmap address %p of size %lu\n", ptr,
                   (unsigned long int) m->length);
 #endif
-          unlink (m->path);
-          HASH_DEL (flexmap, m);
-          freemap (m);
+/* Make sure a child process does not accidentally delete a mapping owned
+ * by a parent.
+ */
+          pid = getpid();
+          if(pid == m->pid)
+          {
+#if defined(DEBUG) || defined(DEBUG2)
+          fprintf(stderr,"Flexmem ulink %p/%s\n", ptr, m->path);
+#endif
+            unlink (m->path);
+            HASH_DEL (flexmap, m);
+            freemap (m);
+          }
           omp_unset_nest_lock (&lock);
           return;
         }
       omp_unset_nest_lock (&lock);
     }
-#ifdef DEBUG
-write(2,"F1 \n",4);
-#endif
   (*flexmem_default_free) (ptr);
-#ifdef DEBUG
-write(2,"F2 \n",4);
-#endif
 }
 
 
@@ -367,6 +374,7 @@ realloc (void *ptr, size_t size)
   struct map *m, *y;
   int j, fd;
   void *x;
+  pid_t pid;
 #ifdef DEBUG
   fprintf(stderr,"realloc\n");
 #endif
@@ -391,12 +399,29 @@ realloc (void *ptr, size_t size)
       if (m)
         {
 /* Remove the current file mapping, truncate the file, and return a new
- * file mapping to the truncated file.
+ * file mapping to the truncated file. But don't allow a child process
+ * to screw with the parent's mapping.
  */
-          HASH_DEL (flexmap, m);
           munmap (ptr, m->length);
-          m->length = size;
-          fd = open (m->path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+          pid = getpid();
+          if(pid == m->pid)
+          {
+            HASH_DEL (flexmap, m);
+            m->length = size;
+            fd = open (m->path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+          } else
+          {
+/* We're in a child process. We need to copy this mapping and create a new
+ * map entry unique to the child.
+ */
+// XXX Need to copy old data up to min (size, m->length)
+            m = (struct map *) ((*flexmem_default_malloc) (sizeof (struct map)));
+            m->path = (char *) ((*flexmem_default_malloc) (FLEXMEM_MAX_PATH_LEN));
+            memset(m->path,0,FLEXMEM_MAX_PATH_LEN);
+            strncpy (m->path, flexmem_fname_template, FLEXMEM_MAX_PATH_LEN);
+            m->length = size;
+            fd = mkostemp (m->path, O_RDWR | O_CREAT);
+          }
           if (fd < 0)
             goto bail;
           j = ftruncate (fd, m->length);
@@ -404,11 +429,12 @@ realloc (void *ptr, size_t size)
             goto bail;
           m->addr =
             mmap (NULL, m->length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+          m->pid = getpid();
 /* Check for existence of the address in the hash. It must not already exist,
  * (after all we just removed it and we hold the lock)--if it does something
  * is terribly wrong and we bail.
  */
-          HASH_FIND_PTR (flexmap, &ptr, y);
+          HASH_FIND_PTR (flexmap, m->addr, y);
           if(y)
           {
             munmap (m->addr, m->length);

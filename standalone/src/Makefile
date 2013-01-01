@@ -11,7 +11,7 @@ endif
 all: lib
 
 lib:
-	gcc -Wall -fopenmp -I. -fPIC -shared -o libflexmem.so flexmem.c -Wl,-E -ldl
+	gcc -Wall -fopenmp -I. -fPIC -shared -o libflexmem.so flexmem.c -ldl
 
 clean:
 	rm -f *.so *.o  test
