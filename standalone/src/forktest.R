@@ -5,8 +5,9 @@ x = rnorm(1e5)
 print(tracemem(x))
 print(flexmem_lookup(x))
 cat("------------------\n")
-p <- fork()
+p = fork()
 if (inherits(p, "masterProcess")) {
+# Here we are in the child
       cat("I'm a child! ", Sys.getpid(), "\n")
       x[2]=0
       print(head(x))
@@ -16,5 +17,8 @@ if (inherits(p, "masterProcess")) {
       gc()
       exit()
 }
+# Here we are still in the parent.
+x[1] = 1
+print(head(x))
 Sys.sleep(2)
 kill(p,9)

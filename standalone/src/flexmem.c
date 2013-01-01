@@ -21,21 +21,17 @@
 
 /* NOTES
  *
- * Flexmem is a hack that uses reasonably well-known methods to overload malloc,
- * free, calloc, and realloc such that allocations above a threshold are memory
+ * Flexmem is a hack that uses well-known methods to overload various memory
+ * allocation functions such that allocations above a threshold use memory
  * mapped files. The library maintains a mapping of allocated addresses and
  * corresponding backing files and cleans up files as they are de-allocated.
  * The idea is to help programs allocate large objects out of core while
- * explicitly avoiding the system swap space. The library provides a crude API
+ * explicitly avoiding the system swap space. The library provides a basic API
  * that lets programs change the mapping file path and threshold value.
  *
- * The use of mutex-like locking below is probably not the most efficient
- * approach--a finer read/write locking mechanism might be better since uthash
- * supports threaded reading.  But, we like omp for its simplicity and
- * portability.
- *
  * Be cautious when debugging about placement of printf, write, etc. These
- * things often end up re-entering one of our functions.
+ * things often end up re-entering one of our functions. The general rule here
+ * is to keep things as minimal as possible.
  */
 
 /* The map structure tracks the file mappings.  */
@@ -109,6 +105,9 @@ flexmem_finalize ()
     pid = getpid();
     if(pid == m->pid)
     {
+#if defined(DEBUG) || defined(DEBUG2)
+      fprintf(stderr,"Flexmem ulink %s\n", m->path);
+#endif
       unlink (m->path);
       HASH_DEL (flexmap, m);
       freemap (m);
@@ -246,7 +245,6 @@ flexmem_lookup(void *addr)
 /* End of API functions ---------------------------------------------------- */
 
 
-
 /* freemap is a utility function that deallocates the supplied map structure */
 void
 freemap (struct map *m)
@@ -368,11 +366,15 @@ fprintf(stderr,"free %p \n",ptr);
 }
 
 
+/* Realloc is complicated in the case of fork. We have to protect parents from
+ * wayward children and also maintain expected realloc behavior. See comments
+ * below...
+ */
 void *
 realloc (void *ptr, size_t size)
 {
   struct map *m, *y;
-  int j, fd, inchild;
+  int j, fd, child;
   void *x;
   pid_t pid;
   size_t copylen;
@@ -405,7 +407,7 @@ realloc (void *ptr, size_t size)
  */
           munmap (ptr, m->length);
           pid = getpid();
-          inchild = 0;
+          child = 0;
           if(pid == m->pid)
           {
             HASH_DEL (flexmap, m);
@@ -418,7 +420,7 @@ realloc (void *ptr, size_t size)
  * (size, m->length), this sucks.
  */
             y = m;
-            inchild = 1;
+            child = 1;
             m = (struct map *) ((*flexmem_default_malloc) (sizeof (struct map)));
             m->path = (char *) ((*flexmem_default_malloc) (FLEXMEM_MAX_PATH_LEN));
             memset(m->path,0,FLEXMEM_MAX_PATH_LEN);
@@ -435,8 +437,8 @@ realloc (void *ptr, size_t size)
             goto bail;
           m->addr =
             mmap (NULL, m->length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-/* Here is the crummy child copy... */
-          if(inchild) memcpy(m->addr,y->addr,copylen);
+/* Here is a rather unfortunate child copy... */
+          if(child) memcpy(m->addr,y->addr,copylen);
           m->pid = getpid();
 /* Check for existence of the address in the hash. It must not already exist,
  * (after all we just removed it and we hold the lock)--if it does something
