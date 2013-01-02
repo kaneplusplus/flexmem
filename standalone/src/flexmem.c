@@ -11,6 +11,8 @@
 #include <unistd.h>
 #include <omp.h>
 
+#define uthash_malloc(sz) uthash_malloc_(sz)
+#define uthash_free(ptr, sz) uthash_free_(ptr)
 #include "uthash.h"
 #include "flexmem.h"
 
@@ -22,9 +24,16 @@ static void *(*flexmem_default_malloc) (size_t);
 static void *(*flexmem_default_valloc) (size_t);
 static void *(*flexmem_default_realloc) (void *, size_t);
 
-/* Additional library state */
+static void *uthash_malloc_ (size_t);
+static void uthash_free_ (void *);
 void freemap (struct map *);
-static int READY = 0;
+
+/* READY has three states:
+ * -1 at startup, prior to initialization of anythingo
+ *  1 After initialization finished, ready to go.
+ *  0 After finalization has been called, don't mmap anymore.
+ */
+static int READY = -1;
 
 /* NOTES
  *
@@ -54,10 +63,14 @@ flexmem_init ()
 #ifdef DEBUG
 write(2,"INIT \n",6);
 #endif
-  if(READY < 1) omp_init_nest_lock (&lock);
+  if(READY < 0)
+  {
+    omp_init_nest_lock (&lock);
+    READY=1;
+  }
   if(!flexmem_hook) flexmem_hook = __malloc_hook;
-  flexmem_default_free = (void *(*)(void *)) dlsym (RTLD_NEXT, "free");
-  READY=1;
+  if(!flexmem_default_free) flexmem_default_free =
+    (void *(*)(void *)) dlsym (RTLD_NEXT, "free");
 }
 
 /* Flexmem finalization
@@ -69,8 +82,8 @@ flexmem_finalize ()
 {
   struct map *m, *tmp;
   pid_t pid;
-  READY = 0;
   omp_set_nest_lock (&lock);
+  READY = 0;
   HASH_ITER(hh, flexmap, m, tmp)
   {
     munmap (m->addr, m->length);
@@ -108,6 +121,23 @@ freemap (struct map *m)
     }
 }
 
+/* Make sure uthash uses the default malloc and free functions. */
+void *
+uthash_malloc_ (size_t size)
+{
+printf("UTHASH MALLOC\n");
+  if(!flexmem_default_malloc)
+    flexmem_default_malloc = (void *(*)(size_t)) dlsym (RTLD_NEXT, "malloc");
+  return (*flexmem_default_malloc) (size);
+}
+
+void
+uthash_free_ (void *ptr)
+{
+  if(!flexmem_default_free)
+    flexmem_default_free = (void *(*)(void *)) dlsym (RTLD_NEXT, "free");
+  (*flexmem_default_free) (ptr);
+}
 
 void *
 malloc (size_t size)
@@ -119,7 +149,7 @@ malloc (size_t size)
 
   if(!flexmem_default_malloc)
     flexmem_default_malloc = (void *(*)(size_t)) dlsym (RTLD_NEXT, "malloc");
-  if (size > flexmem_threshold && READY)
+  if (size > flexmem_threshold && READY>0)
     {
       m = (struct map *) ((*flexmem_default_malloc) (sizeof (struct map)));
       m->path = (char *) ((*flexmem_default_malloc) (FLEXMEM_MAX_PATH_LEN));
@@ -168,12 +198,13 @@ malloc (size_t size)
   else
     {
       x = (*flexmem_default_malloc) (size);
-    }
 #ifdef DEBUG
-  fprintf(stderr,"malloc %p\n",x);
+      fprintf(stderr,"malloc %p\n",x);
 #endif
+    }
   return x;
 }
+
 
 void
 free (void *ptr)
@@ -182,7 +213,7 @@ free (void *ptr)
   pid_t pid;
   if (!ptr)
     return;
-  if (READY)
+  if (READY>0)
     {
 #ifdef DEBUG
 fprintf(stderr,"free %p \n",ptr);
@@ -191,11 +222,11 @@ fprintf(stderr,"free %p \n",ptr);
       HASH_FIND_PTR (flexmap, &ptr, m);
       if (m)
         {
-          munmap (ptr, m->length);
 #if defined(DEBUG) || defined(DEBUG2)
           fprintf(stderr,"Flexmem unmap address %p of size %lu\n", ptr,
                   (unsigned long int) m->length);
 #endif
+          munmap (ptr, m->length);
 /* Make sure a child process does not accidentally delete a mapping owned
  * by a parent.
  */
@@ -214,6 +245,8 @@ fprintf(stderr,"free %p \n",ptr);
         }
       omp_unset_nest_lock (&lock);
     }
+  if(!flexmem_default_free)
+    flexmem_default_free = (void *(*)(void *)) dlsym (RTLD_NEXT, "free");
   (*flexmem_default_free) (ptr);
 }
 
@@ -224,7 +257,7 @@ fprintf(stderr,"free %p \n",ptr);
 void *
 valloc (size_t size)
 {
-  if (READY && size > flexmem_threshold)
+  if (READY>0 && size > flexmem_threshold)
     {
 #if defined(DEBUG) || defined(DEBUG2)
       fprintf(stderr,"Flexmem valloc...handing off to flexmem malloc\n");
@@ -266,7 +299,7 @@ realloc (void *ptr, size_t size)
   if(!flexmem_default_realloc)
     flexmem_default_realloc =
       (void *(*)(void *, size_t)) dlsym (RTLD_NEXT, "realloc");
-  if (READY)
+  if (READY>0)
     {
       omp_set_nest_lock (&lock);
       HASH_FIND_PTR (flexmap, &ptr, m);
@@ -368,7 +401,7 @@ calloc (size_t count, size_t size)
 {
   void *x;
   size_t n = count * size;
-  if (READY && n > flexmem_threshold)
+  if (READY>0 && n > flexmem_threshold)
     {
 #if defined(DEBUG) || defined(DEBUG2)
       fprintf(stderr,"Flexmem calloc...handing off to flexmem malloc\n");

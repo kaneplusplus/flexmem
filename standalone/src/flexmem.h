@@ -4,7 +4,6 @@
 #define FLEXMEM_MAX_PATH_LEN 4096
 #undef DEBUG
 #undef DEBUG2
-//#define DEBUG
 
 
 /* NOTES

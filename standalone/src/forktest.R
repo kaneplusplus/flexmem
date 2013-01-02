@@ -18,7 +18,7 @@ if (inherits(p, "masterProcess")) {
       exit()
 }
 # Here we are still in the parent.
-x[1] = 1
-print(head(x))
 Sys.sleep(2)
 kill(p,9)
+
+# Try modifying x and check tracemem, etc.
