@@ -14,6 +14,45 @@ argument. All memory allocations larger than a specified threshold
 are memory-mapped to a binary file. When data are not needed, they are
 stored on disk. It is both process- and thread-safe.
 
+Requirements
+---
+
+flexmem requires that some version of openmp is installed on the machine.
+
+The R flexmem package requires that flexmem is installed along with the 
+R programming environment version 3.0.0 or above.
+
+Installing flexmem
+---
+
+The flexmem package can be installed by navigating to the 
+`flexmem/standalone/src` directory using the following commands:
+
+```bash
+mike@mike-VirtualBox:~/Projects/flexmem/standalone/src
+> make all
+mike@mike-VirtualBox:~/Projects/flexmem/standalone/src
+> sudo make install
+```
+
+Please note that you may get a warning message concerning "__malloc_hook".
+This is due to a recent change in gcc and is currently being worked through.
+Also note that install will put the executable into /usr/local/bin and the
+required shared object file inot /usr/local/lib.
+
+Installing the R flexmem package
+---
+
+After installing flexmem the R flexmem package can be installed by navigating
+to the `flexmem/Rpkg` directory and using the following commands in a shell:
+
+```bash
+R CMD INSTALL flexmem
+```
+
+The package documentation provides more information about how to use the 
+R flexmem package.
+
 Using flexmem
 ---
 

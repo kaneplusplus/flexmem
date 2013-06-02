@@ -1,8 +1,4 @@
-export(flexmem_set_pattern)
 export(flexmem_threshold)
-export(flexmem_set_path)
-export(flexmem_get_template)
-export(flexmem_lookup)
 export(ref)
 export(Reference)
 exportMethods("-")

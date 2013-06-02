@@ -13,9 +13,7 @@
 \examples{
 y <- ref(1:10)
 print(y)
-addOne <- function(x) {
-  x[] <- x[]+1
-}
+addOne <- function(x) x[] <- x[] + 1
 addOne(y)
 print(y)
 }
