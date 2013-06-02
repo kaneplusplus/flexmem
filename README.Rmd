@@ -19,11 +19,9 @@ Using flexmem
 
 Start an application in flexmem by specifying the application as an argument
 
-
-```r
+```{r, eval=FALSE}
 mike@mike-VirtualBox:~/$ flexmem R
 ```
-
 
 The memory-mapped files are stored in `/tmp` by default. This parameter along
 with others can be interrogated using the Rflexmem package, included in
