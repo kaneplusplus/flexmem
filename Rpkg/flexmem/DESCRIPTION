@@ -1,10 +1,9 @@
 Package: flexmem
-Author: Bryan Lewis <blewis@illposed.net> and Michael Kane
-    <kaneplusplus@gmail.com>
+Author: Michael Kane <kaneplusplus@gmail.com> and Bryan Lewis <blewis@illposed.net> 
 Maintainer: Michael Kane <kaneplusplus@gmail.com>
 Version: 0.1
 Date: 2012-12-06
-License: LGPL-3
+License: ALv2
 Title: Native support for out-of-core data structures in R
 Description: This package provides utilities to override the memory allocator,
     allowing users to create out-of-core data structures that may be much
