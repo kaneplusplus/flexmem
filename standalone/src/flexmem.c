@@ -74,8 +74,7 @@ write(2,"INIT \n",6);
 }
 
 /* Flexmem finalization
- * Remove any left over allocations, but we don't destroy the lock--should we?
- *
+ * Remove any left over allocations, but we don't destroy the lock--XXX
  */
 static void
 flexmem_finalize ()
@@ -395,7 +394,8 @@ reallocf (void *ptr, size_t size)
 /* calloc is a special case. Unfortunately, dlsym ultimately calls calloc,
  * thus a direct interposition here results in an infinite loop...We created
  * a fake calloc that relies on malloc, and avoids looking it up by abusing the
- * malloc.h hooks library. This is much easier on BSD.
+ * malloc.h hooks library. This is much easier on BSD/OS X where we don't have
+ * to do this.
  */
 void *
 calloc (size_t count, size_t size)
