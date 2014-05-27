@@ -1,7 +1,6 @@
 Our makefile uses a variable called PREFIX to set up the installation path.
 The default value is /usr/local. See the examples below...
 
-
 Quick example temporary installation:
 
 make
