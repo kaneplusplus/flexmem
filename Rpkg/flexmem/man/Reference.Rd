@@ -1,6 +1,9 @@
 \name{Reference}
 \alias{Reference}
 \title{The R5 Reference class}
+\usage{
+  Reference(...)
+}
 \description{
   Pass an R object to ref. The return is an object that
   behaves like the original object but exhibits reference
