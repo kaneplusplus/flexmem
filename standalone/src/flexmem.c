@@ -169,6 +169,7 @@ malloc (size_t size)
         }
       m->addr =
         mmap (NULL, m->length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+      madvise(m->addr, m->length, flexmem_advise);
       m->pid = getpid();
       x = m->addr;
       close (fd);

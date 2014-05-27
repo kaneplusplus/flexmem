@@ -38,6 +38,36 @@ Rflexmem_threshold (SEXP J)
   return (VAL);
 }
 
+/* Set madvise option */
+SEXP
+Rflexmem_madvise (SEXP J)
+{
+  SEXP VAL;
+  void *handle;
+  int advice;
+  int (*flex_madvise)(int);
+  char *derror;
+
+  handle = dlopen (NULL, RTLD_LAZY);
+  if (!handle) {
+      error ("%s\n",dlerror ());
+      return R_NilValue;
+  }
+  dlerror ();
+  flex_madvise = (int (*)(int ))dlsym(handle, "flexmem_madvise");
+  if ((derror = dlerror ()) != NULL)  {
+      error ("%s\n",dlerror ());
+      return R_NilValue;
+  }
+  dlclose (handle);
+
+  PROTECT (VAL = allocVector(INTSXP, 1));
+  advice = (int) *(INTEGER (J));
+  INTEGER(VAL)[0] = (int) (*flex_madvise)(advice);
+  UNPROTECT (1);
+  return (VAL);
+}
+
 /*
  * flexmem_set_pattern
  *

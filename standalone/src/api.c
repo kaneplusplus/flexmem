@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/mman.h>
 #include <omp.h>
 
 #include "uthash.h"
@@ -12,6 +13,8 @@ static char flexmem_fname_path[FLEXMEM_MAX_PATH_LEN] = "/tmp";
 
 char flexmem_fname_template[FLEXMEM_MAX_PATH_LEN] = "/tmp/fm_XXXXXX";
 size_t flexmem_threshold = 2000000000;
+
+int flexmem_advise = MADV_SEQUENTIAL;
 
 /* The next functions allow applications to inspect and change default
  * settings. The application must dynamically locate them with dlsym after
@@ -42,6 +45,19 @@ flexmem_set_threshold (size_t j)
     omp_unset_nest_lock (&lock);
   }
   return flexmem_threshold;
+}
+
+/* Set madvise option */
+int
+flexmem_madvise (int j)
+{
+  if(j> -1)
+  {
+    omp_set_nest_lock (&lock);
+    flexmem_advise = j;
+    omp_unset_nest_lock (&lock);
+  }
+  return flexmem_advise;
 }
 
 /* Set the file template character string

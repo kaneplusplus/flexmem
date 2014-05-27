@@ -5,6 +5,8 @@
 #undef DEBUG
 #undef DEBUG2
 
+#define DEBUG2
+
 
 /* NOTES
  *
@@ -35,6 +37,7 @@ struct map
 /* These global values can be changed using the basic API defined in api.c. */
 extern char flexmem_fname_template[];
 extern size_t flexmem_threshold;
+extern int flexmem_advise;
 
 /* The global variable flexmap is a key-value list of addresses (keys)
  * and file paths (values). The OpenMP lock is used widely in the library and
