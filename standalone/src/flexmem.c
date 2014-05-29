@@ -58,6 +58,11 @@ static int READY = -1;
  * This function may be called multiple times, be aware of that and keep
  * this as tiny/simple as possible and thread-safe.
  *
+ * Oddly, flexmem_init is invoked lazily by calloc, which will be triggered
+ * either directly by a program calloc call, or on first use of any of the
+ * intercepted functions because all of them except for calloc call dlsym,
+ * which itself calls calloc.
+ *
  */
 static void
 flexmem_init ()
