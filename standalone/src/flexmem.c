@@ -29,7 +29,7 @@ static void uthash_free_ (void *);
 void freemap (struct map *);
 
 /* READY has three states:
- * -1 at startup, prior to initialization of anythingo
+ * -1 at startup, prior to initialization of anything
  *  1 After initialization finished, ready to go.
  *  0 After finalization has been called, don't mmap anymore.
  */
@@ -124,7 +124,6 @@ freemap (struct map *m)
 void *
 uthash_malloc_ (size_t size)
 {
-printf("UTHASH MALLOC\n");
   if(!flexmem_default_malloc)
     flexmem_default_malloc = (void *(*)(size_t)) dlsym (RTLD_NEXT, "malloc");
   return (*flexmem_default_malloc) (size);
