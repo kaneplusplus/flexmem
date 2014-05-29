@@ -16,9 +16,11 @@
 #include "uthash.h"
 #include "flexmem.h"
 
+extern void *__libc_malloc(size_t size);
 static void flexmem_init (void) __attribute__ ((constructor));
 static void flexmem_finalize (void) __attribute__ ((destructor));
-static void *(*flexmem_hook) (size_t, const void *);
+//static void *(*flexmem_hook) (size_t, const void *);
+static void *(*flexmem_hook) (size_t);
 static void *(*flexmem_default_free) (void *);
 static void *(*flexmem_default_malloc) (size_t);
 static void *(*flexmem_default_valloc) (size_t);
@@ -68,7 +70,7 @@ write(2,"INIT \n",6);
     omp_init_nest_lock (&lock);
     READY=1;
   }
-  if(!flexmem_hook) flexmem_hook = __malloc_hook;
+  if(!flexmem_hook) flexmem_hook = __libc_malloc;//__malloc_hook;
   if(!flexmem_default_free) flexmem_default_free =
     (void *(*)(void *)) dlsym (RTLD_NEXT, "free");
 }
@@ -392,9 +394,9 @@ reallocf (void *ptr, size_t size)
 
 /* calloc is a special case. Unfortunately, dlsym ultimately calls calloc,
  * thus a direct interposition here results in an infinite loop...We created
- * a fake calloc that relies on malloc, and avoids looking it up by abusing the
- * malloc.h hooks library. This is much easier on BSD/OS X where we don't have
- * to do this.
+ * a fake calloc that relies on malloc, and we avoid use of dlsym by using
+ * the special glibc __libc_malloc. This works, but requires glibc!
+ * We should not need to do this on BSD/OS X.
  */
 void *
 calloc (size_t count, size_t size)
@@ -409,7 +411,7 @@ calloc (size_t count, size_t size)
       return malloc (n);
     }
   if(!flexmem_hook) flexmem_init();
-  x = flexmem_hook (n, NULL);
+  x = flexmem_hook (n);//, NULL);
   memset (x, 0, n);
   return x;
 }
