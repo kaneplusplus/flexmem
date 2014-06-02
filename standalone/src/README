@@ -1,14 +1,13 @@
 Our makefile uses a variable called PREFIX to set up the installation path.
 The default value is /usr/local. See the examples below...
 
-Quick example temporary installation:
+Quick example:
 
 make
-make PREFIX=/tmp install
-/tmp/flexmem <program> [arguments]
+FLEXMEM_HOME=$(pwd) ./flexmem <program> [program arguments]
 
 
-Or, into the default location of /usr/local/:
+Or, install into the default location of /usr/local/:
 
 make
 make install

@@ -15,6 +15,7 @@ char flexmem_fname_template[FLEXMEM_MAX_PATH_LEN] = "/tmp/fm_XXXXXX";
 size_t flexmem_threshold = 2000000000;
 
 int flexmem_advise = MADV_SEQUENTIAL;
+int flexmem_offset = 0;
 
 /* The next functions allow applications to inspect and change default
  * settings. The application must dynamically locate them with dlsym after
@@ -25,6 +26,8 @@ int flexmem_advise = MADV_SEQUENTIAL;
  * int flexmem_set_template (char *template)
  * int flexmem_set_pattern (char *pattern)
  * int flexmem_set_path (char *path)
+ * int flexmem_madvise (int j)
+ * int flexmem_memcpy_offset (int j)
  * char * flexmem_lookup(void *addr)
  * char * flexmem_get_template()
  */
@@ -58,6 +61,19 @@ flexmem_madvise (int j)
     omp_unset_nest_lock (&lock);
   }
   return flexmem_advise;
+}
+
+/* Set memcpy offset option */
+int
+flexmem_memcpy_offset (int j)
+{
+  if(j> -1)
+  {
+    omp_set_nest_lock (&lock);
+    flexmem_offset = j;
+    omp_unset_nest_lock (&lock);
+  }
+  return flexmem_offset;
 }
 
 /* Set the file template character string

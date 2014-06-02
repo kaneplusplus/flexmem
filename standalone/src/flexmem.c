@@ -19,12 +19,12 @@
 extern void *__libc_malloc(size_t size);
 static void flexmem_init (void) __attribute__ ((constructor));
 static void flexmem_finalize (void) __attribute__ ((destructor));
-//static void *(*flexmem_hook) (size_t, const void *);
 static void *(*flexmem_hook) (size_t);
 static void *(*flexmem_default_free) (void *);
 static void *(*flexmem_default_malloc) (size_t);
 static void *(*flexmem_default_valloc) (size_t);
 static void *(*flexmem_default_realloc) (void *, size_t);
+static void *(*flexmem_default_memcpy) (void *dest, const void *src, size_t n);
 
 static void *uthash_malloc_ (size_t);
 static void uthash_free_ (void *);
@@ -75,7 +75,7 @@ write(2,"INIT \n",6);
     omp_init_nest_lock (&lock);
     READY=1;
   }
-  if(!flexmem_hook) flexmem_hook = __libc_malloc;//__malloc_hook;
+  if(!flexmem_hook) flexmem_hook = __libc_malloc;
   if(!flexmem_default_free) flexmem_default_free =
     (void *(*)(void *)) dlsym (RTLD_NEXT, "free");
 }
@@ -210,7 +210,6 @@ malloc (size_t size)
     }
   return x;
 }
-
 
 void
 free (void *ptr)
@@ -347,8 +346,8 @@ realloc (void *ptr, size_t size)
             goto bail;
           m->addr =
             mmap (NULL, m->length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-/* Here is a rather unfortunate child copy... */
-          if(child) memcpy(m->addr,y->addr,copylen);
+/* Here is a rather unfortunate child copy... XXX ADAPT THIS TO USE A COW MAP */
+          if(child) flexmem_default_memcpy(m->addr,y->addr,copylen);
           m->pid = getpid();
 /* Check for existence of the address in the hash. It must not already exist,
  * (after all we just removed it and we hold the lock)--if it does something
@@ -395,6 +394,87 @@ reallocf (void *ptr, size_t size)
 // and POSIX. Define them here.
 // XXX WRITE ME!
 #endif
+
+
+/* A flexmem-aware memcpy.
+ *
+ * It turns out, at least on Linux, that memcpy on memory-mapped files is much
+ * slower than simply copying the data with read and write--and much, much
+ * slower than zero (user space) copy techniques using sendfile.
+ *
+ * We provide a custom memcpy that copies flexmem-allocated regions. We use
+ * read/write instead of sendfile because sometimes we only partially copy the
+ * files.
+ *
+ * This routine can only copy entire files or portions of files defined by a
+ * fixed-lengh offset (a common use case in R for example). Other kinds of
+ * memcpy use the default memcpy.
+ *
+ * Many additional improvements are possible here. See the inline comments
+ * below...
+ */
+void *
+memcpy (void *dest, const void *src, size_t n)
+{
+  struct map *SRC, *DEST;
+  void *dest_off;
+  void *src_off;
+  int src_fd, dest_fd;
+  char buf[BUFSIZ];
+  ssize_t s;
+  if(!flexmem_default_memcpy)
+    flexmem_default_memcpy =
+      (void *(*)(void *, const void *, size_t)) dlsym (RTLD_NEXT, "memcpy");
+  dest_off = (void *)( (char *)dest - flexmem_offset);
+  src_off  = (void *)( (char *)src  - flexmem_offset);
+  omp_set_nest_lock (&lock);
+  HASH_FIND_PTR (flexmap, &src_off, SRC);
+  HASH_FIND_PTR (flexmap, &dest_off, DEST);
+  if (!SRC || !DEST)
+  {
+/* One or more of src, dest is not the start of a flexmem allocation.
+ * Default in this case to the usual memcpy.
+ */
+    omp_unset_nest_lock (&lock);
+    return (*flexmem_default_memcpy) (dest, src, n);
+  }
+  if(SRC->length != (n + flexmem_offset) || DEST->length != (n+flexmem_offset))
+  {
+/* Our efficient methods below require copy of a full region.
+ * Default in this case to the usual memcpy.
+ */
+    omp_unset_nest_lock (&lock);
+    return (*flexmem_default_memcpy) (dest, src, n);
+  }
+#if defined(DEBUG) || defined(DEBUG2)
+  fprintf(stderr,"CAZART! Flexmem memcopy address %p src_addr %p of size %lu\n", SRC->addr, src,
+            (unsigned long int) SRC->length);
+#endif
+/* XXX
+what we really want here is to take the two file mappings and overlay them
+explicitly at the file system or block device level. That is, put the SRC file
+directly under the DEST file, then mark that it's a cow.
+
+The problem with the OS cow is that changes to DEST will go into the
+buffer cache instead of a file. If those changes are huge, they will
+swap--mostly defeating our system.
+
+So we need a magic overlay FS that can take two source files of the
+same size and modify the 2nd file to be a COW mask above the 1st
+file (all in place).
+
+for now the best we can do is a reasonably efficient copy
+*/
+  src_fd = open(SRC->path,O_RDONLY);
+  dest_fd = open(DEST->path,O_RDWR);
+  omp_unset_nest_lock (&lock);
+  lseek(src_fd, flexmem_offset, SEEK_SET);
+  lseek(dest_fd, flexmem_offset, SEEK_SET);
+  while ((s = read(src_fd, buf, BUFSIZ)) > 0) write(dest_fd, buf, s);
+  return dest;
+}
+
+
 
 
 /* calloc is a special case. Unfortunately, dlsym ultimately calls calloc,

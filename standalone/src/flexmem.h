@@ -39,8 +39,13 @@ extern char flexmem_fname_template[];
 extern size_t flexmem_threshold;
 extern int flexmem_advise;
 
-/* The global variable flexmap is a key-value list of addresses (keys)
- * and file paths (values). The OpenMP lock is used widely in the library and
+/* The flexmem_offset global can be set by the api. It affects memcpy by
+ * searching for keys offset from the given memcpy address.
+ */
+extern int flexmem_offset;
+
+/* The global variable flexmap is a key-value list of addresses (keys) and file
+ * paths (values). The recursive OpenMP lock is used widely in the library and
  * API functions.
  */
 struct map *flexmap;

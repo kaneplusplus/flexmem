@@ -27,6 +27,12 @@ flexmem_madvise <- function(advice=c("NORMAL","RANDOM","SEQUENTIAL"))
   j
 }
 
+flexmem_memcpy_offset <- function(offset)
+{
+  if(missing(offset))  -1 -> offset
+  .Call("Rflexmem_memcpy_offset", as.integer(offset), PACKAGE="flexmem")
+}
+
 flexmem_set_pattern <- function(pattern="fm_XXXXXX")
 {
   .Call("Rflexmem_set_pattern", as.character(pattern), PACKAGE="flexmem")

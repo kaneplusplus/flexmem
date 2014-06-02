@@ -68,6 +68,36 @@ Rflexmem_madvise (SEXP J)
   return (VAL);
 }
 
+/* Set memcpy offset option */
+SEXP
+Rflexmem_memcpy_offset (SEXP J)
+{
+  SEXP VAL;
+  void *handle;
+  int advice;
+  int (*flex_memcpy_offset)(int);
+  char *derror;
+
+  handle = dlopen (NULL, RTLD_LAZY);
+  if (!handle) {
+      error ("%s\n",dlerror ());
+      return R_NilValue;
+  }
+  dlerror ();
+  flex_memcpy_offset = (int (*)(int ))dlsym(handle, "flexmem_memcpy_offset");
+  if ((derror = dlerror ()) != NULL)  {
+      error ("%s\n",dlerror ());
+      return R_NilValue;
+  }
+  dlclose (handle);
+
+  PROTECT (VAL = allocVector(INTSXP, 1));
+  advice = (int) *(INTEGER (J));
+  INTEGER(VAL)[0] = (int) (*flex_memcpy_offset)(advice);
+  UNPROTECT (1);
+  return (VAL);
+}
+
 /*
  * flexmem_set_pattern
  *
