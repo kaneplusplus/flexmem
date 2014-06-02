@@ -10,7 +10,7 @@ Rxmem_SEXP_SIZE ()
 {
   SEXP ANS;
   PROTECT (ANS = ScalarInteger(0));
-  INTEGER(ANS)[0]= (int)(((char *)INTEGER(ANS)) -  ((char *)ANS));
+  INTEGER(ANS)[0]= (int)(((char *)INTEGER(ANS)) -  ((char *)ANS))*sizeof(char);
   UNPROTECT(1);
   return ANS;
 }
