@@ -1,4 +1,4 @@
-Package: flexmem
+Package: xmem
 Author: Michael Kane <kaneplusplus@gmail.com> and Bryan Lewis <blewis@illposed.net> 
 Maintainer: Michael Kane <kaneplusplus@gmail.com>
 Version: 0.1
@@ -15,7 +15,7 @@ Suggests:
     testthat,
     roxygen2
 Collate:
-    'flexmem-package.r'
-    'flexmem.r'
+    'xmem-package.r'
+    'xmem.r'
     'zzz.r'
     'refclass.r'

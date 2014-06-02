@@ -3,6 +3,16 @@
 #include <R.h>
 #define USE_RINTERNALS
 #include <Rinternals.h>
+/* Measure the size of R's SEXP header */
+SEXP
+Rflexmem_SEXP_SIZE ()
+{
+  SEXP ANS;
+  PROTECT (ANS = ScalarInteger(0));
+  INTEGER(ANS)[0]= (int)(((char *)INTEGER(ANS)) -  ((char *)ANS));
+  UNPROTECT(1);
+  return ANS;
+}
 
 /*
  * flexmem_threshold

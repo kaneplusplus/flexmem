@@ -1,8 +1,2 @@
-
-.onLoad <- function(libname, pkgname) {
-  library.dynam("flexmem", pkgname, libname)
-}
-
-.onUnload <- function(libpath) {
-  library.dynam.unload("flexmem", libpath)
-}
+# Set the memcpy offset to the SEXP header size on this system
+flexmem_memcpy_offset(.Call("Rflexmem_SEXP_SIZE"))
