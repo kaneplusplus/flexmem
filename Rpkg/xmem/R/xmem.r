@@ -11,7 +11,7 @@
 #' }
 threshold <- function(nbytes=0)
 {
-  .Call("Rflexmem_threshold", as.numeric(nbytes), PACKAGE="flexmem")
+  .Call("Rxmem_threshold", as.numeric(nbytes), PACKAGE="xmem")
 }
 
 madvise <- function(advice=c("NORMAL","RANDOM","SEQUENTIAL"))
@@ -22,7 +22,7 @@ madvise <- function(advice=c("NORMAL","RANDOM","SEQUENTIAL"))
   madvise <- list(NORMAL=0,RANDOM=1,SEQUENTIAL=2)
   idx <- -1L
   if(!missing(advice)) idx <- as.integer(madvise[match.arg(advice)])
-  j <- .Call("Rflexmem_madvise", idx, PACKAGE="flexmem")
+  j <- .Call("Rxmem_madvise", idx, PACKAGE="xmem")
   if(j>-1 && j<3) return(names(madvise)[j+1])
   j
 }
@@ -30,28 +30,28 @@ madvise <- function(advice=c("NORMAL","RANDOM","SEQUENTIAL"))
 memcpy_offset <- function(offset)
 {
   if(missing(offset))  -1 -> offset
-  .Call("Rflexmem_memcpy_offset", as.integer(offset), PACKAGE="flexmem")
+  .Call("Rxmem_memcpy_offset", as.integer(offset), PACKAGE="xmem")
 }
 
 xmem_pattern <- function(pattern="fm_XXXXXX")
 {
-  .Call("Rflexmem_set_pattern", as.character(pattern), PACKAGE="flexmem")
+  .Call("Rxmem_set_pattern", as.character(pattern), PACKAGE="xmem")
 }
 
 # Note, we use "tmp" instead of tempdir() here to correspond to default
-# value in libflexmem.so.
+# value in libxmem.so.
 xmem_path <- function(path="/tmp")
 {
 # XXX validate path first.
-  .Call("Rflexmem_set_path", as.character(path), PACKAGE="flexmem")
+  .Call("Rxmem_set_path", as.character(path), PACKAGE="xmem")
 }
 
 xmem_get_template <- function()
 {
-  .Call("Rflexmem_get_template", PACKAGE="flexmem")
+  .Call("Rxmem_get_template", PACKAGE="xmem")
 }
 
 lookup <- function(object)
 {
-  .Call("Rflexmem_lookup", object, PACKAGE="flexmem")
+  .Call("Rxmem_lookup", object, PACKAGE="xmem")
 }

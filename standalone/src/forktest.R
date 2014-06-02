@@ -1,9 +1,9 @@
 library(multicore)
-library(flexmem)
-flexmem_threshold(1e5)
+library(xmem)
+xmem_threshold(1e5)
 x = rnorm(1e5)
 print(tracemem(x))
-print(flexmem_lookup(x))
+print(lookup(x))
 cat("------------------\n")
 p = fork()
 if (inherits(p, "masterProcess")) {
@@ -12,7 +12,7 @@ if (inherits(p, "masterProcess")) {
       x[2]=0
       print(head(x))
       print(tracemem(x))
-      print(flexmem_lookup(x))
+      print(lookup(x))
       rm(x)
       gc()
       exit()

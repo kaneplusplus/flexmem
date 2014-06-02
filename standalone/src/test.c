@@ -25,7 +25,7 @@ main (int argc, void **argv)
   handle = dlopen (NULL, RTLD_LAZY);
   if (!handle) return -1;
   dlerror ();
-  set_threshold = (size_t (*)(size_t ))dlsym(handle, "flexmem_set_threshold");
+  set_threshold = (size_t (*)(size_t ))dlsym(handle, "xmem_set_threshold");
   if ((derror = dlerror ()) == NULL)  (*set_threshold) (SIZE);
   dlclose (handle);
 

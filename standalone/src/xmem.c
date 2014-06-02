@@ -1,3 +1,12 @@
+/*   ___    ___ _____ ______   _______   _____ ______      
+ *  |\  \  /  /|\   _ \  _   \|\  ___ \ |\   _ \  _   \
+ *  \ \  \/  / | \  \\\__\ \  \ \   __/|\ \  \\\__\ \  \
+ *   \ \    / / \ \  \\|__| \  \ \  \_|/_\ \  \\|__| \  \
+ *    /     \/   \ \  \    \ \  \ \  \_|\ \ \  \    \ \  \
+ *   /  /\   \    \ \__\    \ \__\ \_______\ \__\    \ \__\
+ *  /__/ /\ __\    \|__|     \|__|\|_______|\|__|     \|__|
+ *  |__|/ \|__|                                            
+ */                                                        
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <stdio.h>
@@ -14,17 +23,17 @@
 #define uthash_malloc(sz) uthash_malloc_(sz)
 #define uthash_free(ptr, sz) uthash_free_(ptr)
 #include "uthash.h"
-#include "flexmem.h"
+#include "xmem.h"
 
 extern void *__libc_malloc(size_t size);
-static void flexmem_init (void) __attribute__ ((constructor));
-static void flexmem_finalize (void) __attribute__ ((destructor));
-static void *(*flexmem_hook) (size_t);
-static void *(*flexmem_default_free) (void *);
-static void *(*flexmem_default_malloc) (size_t);
-static void *(*flexmem_default_valloc) (size_t);
-static void *(*flexmem_default_realloc) (void *, size_t);
-static void *(*flexmem_default_memcpy) (void *dest, const void *src, size_t n);
+static void xmem_init (void) __attribute__ ((constructor));
+static void xmem_finalize (void) __attribute__ ((destructor));
+static void *(*xmem_hook) (size_t);
+static void *(*xmem_default_free) (void *);
+static void *(*xmem_default_malloc) (size_t);
+static void *(*xmem_default_valloc) (size_t);
+static void *(*xmem_default_realloc) (void *, size_t);
+static void *(*xmem_default_memcpy) (void *dest, const void *src, size_t n);
 
 static void *uthash_malloc_ (size_t);
 static void uthash_free_ (void *);
@@ -39,33 +48,33 @@ static int READY = -1;
 
 /* NOTES
  *
- * Flexmem is a hack that uses well-known methods to overload various memory
- * allocation functions such that allocations above a threshold use memory
- * mapped files. The library maintains a mapping of allocated addresses and
- * corresponding backing files and cleans up files as they are de-allocated.
- * The idea is to help programs allocate large objects out of core while
- * explicitly avoiding the system swap space. The library provides a basic API
- * that lets programs change the mapping file path and threshold value.
+ * Xmem uses well-known methods to overload various memory allocation functions
+ * such that allocations above a threshold use memory mapped files. The library
+ * maintains a mapping of allocated addresses and corresponding backing files
+ * and cleans up files as they are de-allocated.  The idea is to help programs
+ * allocate large objects out of core while explicitly avoiding the system swap
+ * space. The library provides a basic API that lets programs change the
+ * mapping file path and threshold value.
  *
  * Be cautious when debugging about placement of printf, write, etc. These
  * things often end up re-entering one of our functions. The general rule here
  * is to keep things as minimal as possible.
  */
 
-/* Flexmem initialization
+/* Xmem initialization
  *
  * Initializes synchronizing lock variable and address/file key/value map.
  * This function may be called multiple times, be aware of that and keep
  * this as tiny/simple as possible and thread-safe.
  *
- * Oddly, flexmem_init is invoked lazily by calloc, which will be triggered
+ * Oddly, xmem_init is invoked lazily by calloc, which will be triggered
  * either directly by a program calloc call, or on first use of any of the
  * intercepted functions because all of them except for calloc call dlsym,
  * which itself calls calloc.
  *
  */
 static void
-flexmem_init ()
+xmem_init ()
 {
 #ifdef DEBUG
 write(2,"INIT \n",6);
@@ -75,16 +84,16 @@ write(2,"INIT \n",6);
     omp_init_nest_lock (&lock);
     READY=1;
   }
-  if(!flexmem_hook) flexmem_hook = __libc_malloc;
-  if(!flexmem_default_free) flexmem_default_free =
+  if(!xmem_hook) xmem_hook = __libc_malloc;
+  if(!xmem_default_free) xmem_default_free =
     (void *(*)(void *)) dlsym (RTLD_NEXT, "free");
 }
 
-/* Flexmem finalization
+/* Xmem finalization
  * Remove any left over allocations, but we don't destroy the lock--XXX
  */
 static void
-flexmem_finalize ()
+xmem_finalize ()
 {
   struct map *m, *tmp;
   pid_t pid;
@@ -94,14 +103,14 @@ flexmem_finalize ()
   {
     munmap (m->addr, m->length);
 #if defined(DEBUG) || defined(DEBUG2)
-    fprintf(stderr,"Flexmem unmap address %p of size %lu\n", m->addr,
+    fprintf(stderr,"Xmem unmap address %p of size %lu\n", m->addr,
             (unsigned long int) m->length);
 #endif
     pid = getpid();
     if(pid == m->pid)
     {
 #if defined(DEBUG) || defined(DEBUG2)
-      fprintf(stderr,"Flexmem ulink %s\n", m->path);
+      fprintf(stderr,"Xmem ulink %s\n", m->path);
 #endif
       unlink (m->path);
       HASH_DEL (flexmap, m);
@@ -110,7 +119,7 @@ flexmem_finalize ()
   }
   omp_unset_nest_lock (&lock);
 #if defined(DEBUG) || defined(DEBUG2)
-  fprintf(stderr,"Flexmem finalized\n");
+  fprintf(stderr,"Xmem finalized\n");
 #endif
 }
 
@@ -122,8 +131,8 @@ freemap (struct map *m)
   if (m)
     {
       if (m->path)
-        (*flexmem_default_free) (m->path);
-      (*flexmem_default_free) (m);
+        (*xmem_default_free) (m->path);
+      (*xmem_default_free) (m);
     }
 }
 
@@ -131,17 +140,17 @@ freemap (struct map *m)
 void *
 uthash_malloc_ (size_t size)
 {
-  if(!flexmem_default_malloc)
-    flexmem_default_malloc = (void *(*)(size_t)) dlsym (RTLD_NEXT, "malloc");
-  return (*flexmem_default_malloc) (size);
+  if(!xmem_default_malloc)
+    xmem_default_malloc = (void *(*)(size_t)) dlsym (RTLD_NEXT, "malloc");
+  return (*xmem_default_malloc) (size);
 }
 
 void
 uthash_free_ (void *ptr)
 {
-  if(!flexmem_default_free)
-    flexmem_default_free = (void *(*)(void *)) dlsym (RTLD_NEXT, "free");
-  (*flexmem_default_free) (ptr);
+  if(!xmem_default_free)
+    xmem_default_free = (void *(*)(void *)) dlsym (RTLD_NEXT, "free");
+  (*xmem_default_free) (ptr);
 }
 
 void *
@@ -152,15 +161,15 @@ malloc (size_t size)
   int j;
   int fd;
 
-  if(!flexmem_default_malloc)
-    flexmem_default_malloc = (void *(*)(size_t)) dlsym (RTLD_NEXT, "malloc");
-  if (size > flexmem_threshold && READY>0)
+  if(!xmem_default_malloc)
+    xmem_default_malloc = (void *(*)(size_t)) dlsym (RTLD_NEXT, "malloc");
+  if (size > xmem_threshold && READY>0)
     {
-      m = (struct map *) ((*flexmem_default_malloc) (sizeof (struct map)));
-      m->path = (char *) ((*flexmem_default_malloc) (FLEXMEM_MAX_PATH_LEN));
-      memset(m->path,0,FLEXMEM_MAX_PATH_LEN);
+      m = (struct map *) ((*xmem_default_malloc) (sizeof (struct map)));
+      m->path = (char *) ((*xmem_default_malloc) (XMEM_MAX_PATH_LEN));
+      memset(m->path,0,XMEM_MAX_PATH_LEN);
       omp_set_nest_lock (&lock);
-      strncpy (m->path, flexmem_fname_template, FLEXMEM_MAX_PATH_LEN);
+      strncpy (m->path, xmem_fname_template, XMEM_MAX_PATH_LEN);
       m->length = size;
       fd = mkostemp (m->path, O_RDWR | O_CREAT);
       j = ftruncate (fd, m->length);
@@ -174,12 +183,12 @@ malloc (size_t size)
         }
       m->addr =
         mmap (NULL, m->length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-      madvise(m->addr, m->length, flexmem_advise);
+      madvise(m->addr, m->length, xmem_advise);
       m->pid = getpid();
       x = m->addr;
       close (fd);
 #if defined(DEBUG) || defined(DEBUG2)
-      fprintf(stderr,"Flexmem malloc address %p, size %lu, file  %s\n", m->addr,
+      fprintf(stderr,"Xmem malloc address %p, size %lu, file  %s\n", m->addr,
               (unsigned long int) m->length, m->path);
 #endif
 /* Check to make sure that this address is not already in the hash. If it is,
@@ -203,7 +212,7 @@ malloc (size_t size)
     }
   else
     {
-      x = (*flexmem_default_malloc) (size);
+      x = (*xmem_default_malloc) (size);
 #ifdef DEBUG
       fprintf(stderr,"malloc %p\n",x);
 #endif
@@ -228,7 +237,7 @@ fprintf(stderr,"free %p \n",ptr);
       if (m)
         {
 #if defined(DEBUG) || defined(DEBUG2)
-          fprintf(stderr,"Flexmem unmap address %p of size %lu\n", ptr,
+          fprintf(stderr,"Xmem unmap address %p of size %lu\n", ptr,
                   (unsigned long int) m->length);
 #endif
           munmap (ptr, m->length);
@@ -239,7 +248,7 @@ fprintf(stderr,"free %p \n",ptr);
           if(pid == m->pid)
           {
 #if defined(DEBUG) || defined(DEBUG2)
-          fprintf(stderr,"Flexmem ulink %p/%s\n", ptr, m->path);
+          fprintf(stderr,"Xmem ulink %p/%s\n", ptr, m->path);
 #endif
             unlink (m->path);
             HASH_DEL (flexmap, m);
@@ -250,9 +259,9 @@ fprintf(stderr,"free %p \n",ptr);
         }
       omp_unset_nest_lock (&lock);
     }
-  if(!flexmem_default_free)
-    flexmem_default_free = (void *(*)(void *)) dlsym (RTLD_NEXT, "free");
-  (*flexmem_default_free) (ptr);
+  if(!xmem_default_free)
+    xmem_default_free = (void *(*)(void *)) dlsym (RTLD_NEXT, "free");
+  (*xmem_default_free) (ptr);
 }
 
 /* valloc returns memory aligned to a page boundary.  Memory mapped flies are
@@ -262,17 +271,17 @@ fprintf(stderr,"free %p \n",ptr);
 void *
 valloc (size_t size)
 {
-  if (READY>0 && size > flexmem_threshold)
+  if (READY>0 && size > xmem_threshold)
     {
 #if defined(DEBUG) || defined(DEBUG2)
-      fprintf(stderr,"Flexmem valloc...handing off to flexmem malloc\n");
+      fprintf(stderr,"Xmem valloc...handing off to xmem malloc\n");
 #endif
       return malloc (size);
     }
-  if(!flexmem_default_valloc)
-    flexmem_default_valloc =
+  if(!xmem_default_valloc)
+    xmem_default_valloc =
       (void *(*)(size_t)) dlsym (RTLD_NEXT, "valloc");
-  return flexmem_default_valloc(size);
+  return xmem_default_valloc(size);
 }
 
 /* Realloc is complicated in the case of fork. We have to protect parents from
@@ -301,8 +310,8 @@ realloc (void *ptr, size_t size)
     }
 
   x = NULL;
-  if(!flexmem_default_realloc)
-    flexmem_default_realloc =
+  if(!xmem_default_realloc)
+    xmem_default_realloc =
       (void *(*)(void *, size_t)) dlsym (RTLD_NEXT, "realloc");
   if (READY>0)
     {
@@ -330,10 +339,10 @@ realloc (void *ptr, size_t size)
  */
             y = m;
             child = 1;
-            m = (struct map *) ((*flexmem_default_malloc) (sizeof (struct map)));
-            m->path = (char *) ((*flexmem_default_malloc) (FLEXMEM_MAX_PATH_LEN));
-            memset(m->path,0,FLEXMEM_MAX_PATH_LEN);
-            strncpy (m->path, flexmem_fname_template, FLEXMEM_MAX_PATH_LEN);
+            m = (struct map *) ((*xmem_default_malloc) (sizeof (struct map)));
+            m->path = (char *) ((*xmem_default_malloc) (XMEM_MAX_PATH_LEN));
+            memset(m->path,0,XMEM_MAX_PATH_LEN);
+            strncpy (m->path, xmem_fname_template, XMEM_MAX_PATH_LEN);
             m->length = size;
             copylen = m->length;
             if(y->length < copylen) copylen = y->length;
@@ -347,7 +356,7 @@ realloc (void *ptr, size_t size)
           m->addr =
             mmap (NULL, m->length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 /* Here is a rather unfortunate child copy... XXX ADAPT THIS TO USE A COW MAP */
-          if(child) flexmem_default_memcpy(m->addr,y->addr,copylen);
+          if(child) xmem_default_memcpy(m->addr,y->addr,copylen);
           m->pid = getpid();
 /* Check for existence of the address in the hash. It must not already exist,
  * (after all we just removed it and we hold the lock)--if it does something
@@ -363,7 +372,7 @@ realloc (void *ptr, size_t size)
           x = m->addr;
           close (fd);
 #if defined(DEBUG) || defined(DEBUG2)
-          fprintf(stderr,"Flexmem realloc address %p size %lu\n", ptr,
+          fprintf(stderr,"Xmem realloc address %p size %lu\n", ptr,
                   (unsigned long int) m->length);
 #endif
           omp_unset_nest_lock (&lock);
@@ -371,7 +380,7 @@ realloc (void *ptr, size_t size)
         }
       omp_unset_nest_lock (&lock);
     }
-  x = (*flexmem_default_realloc) (ptr, size);
+  x = (*xmem_default_realloc) (ptr, size);
   return x;
 
 bail:
@@ -396,13 +405,13 @@ reallocf (void *ptr, size_t size)
 #endif
 
 
-/* A flexmem-aware memcpy.
+/* A xmem-aware memcpy.
  *
  * It turns out, at least on Linux, that memcpy on memory-mapped files is much
  * slower than simply copying the data with read and write--and much, much
  * slower than zero (user space) copy techniques using sendfile.
  *
- * We provide a custom memcpy that copies flexmem-allocated regions. We use
+ * We provide a custom memcpy that copies xmem-allocated regions. We use
  * read/write instead of sendfile because sometimes we only partially copy the
  * files.
  *
@@ -422,32 +431,32 @@ memcpy (void *dest, const void *src, size_t n)
   int src_fd, dest_fd;
   char buf[BUFSIZ];
   ssize_t s;
-  if(!flexmem_default_memcpy)
-    flexmem_default_memcpy =
+  if(!xmem_default_memcpy)
+    xmem_default_memcpy =
       (void *(*)(void *, const void *, size_t)) dlsym (RTLD_NEXT, "memcpy");
-  dest_off = (void *)( (char *)dest - flexmem_offset);
-  src_off  = (void *)( (char *)src  - flexmem_offset);
+  dest_off = (void *)( (char *)dest - xmem_offset);
+  src_off  = (void *)( (char *)src  - xmem_offset);
   omp_set_nest_lock (&lock);
   HASH_FIND_PTR (flexmap, &src_off, SRC);
   HASH_FIND_PTR (flexmap, &dest_off, DEST);
   if (!SRC || !DEST)
   {
-/* One or more of src, dest is not the start of a flexmem allocation.
+/* One or more of src, dest is not the start of a xmem allocation.
  * Default in this case to the usual memcpy.
  */
     omp_unset_nest_lock (&lock);
-    return (*flexmem_default_memcpy) (dest, src, n);
+    return (*xmem_default_memcpy) (dest, src, n);
   }
-  if(SRC->length != (n + flexmem_offset) || DEST->length != (n+flexmem_offset))
+  if(SRC->length != (n + xmem_offset) || DEST->length != (n+xmem_offset))
   {
 /* Our efficient methods below require copy of a full region.
  * Default in this case to the usual memcpy.
  */
     omp_unset_nest_lock (&lock);
-    return (*flexmem_default_memcpy) (dest, src, n);
+    return (*xmem_default_memcpy) (dest, src, n);
   }
 #if defined(DEBUG) || defined(DEBUG2)
-  fprintf(stderr,"CAZART! Flexmem memcopy address %p src_addr %p of size %lu\n", SRC->addr, src,
+  fprintf(stderr,"CAZART! Xmem memcopy address %p src_addr %p of size %lu\n", SRC->addr, src,
             (unsigned long int) SRC->length);
 #endif
 /* XXX
@@ -468,8 +477,8 @@ for now the best we can do is a reasonably efficient copy
   src_fd = open(SRC->path,O_RDONLY);
   dest_fd = open(DEST->path,O_RDWR);
   omp_unset_nest_lock (&lock);
-  lseek(src_fd, flexmem_offset, SEEK_SET);
-  lseek(dest_fd, flexmem_offset, SEEK_SET);
+  lseek(src_fd, xmem_offset, SEEK_SET);
+  lseek(dest_fd, xmem_offset, SEEK_SET);
   while ((s = read(src_fd, buf, BUFSIZ)) > 0) write(dest_fd, buf, s);
   return dest;
 }
@@ -488,15 +497,15 @@ calloc (size_t count, size_t size)
 {
   void *x;
   size_t n = count * size;
-  if (READY>0 && n > flexmem_threshold)
+  if (READY>0 && n > xmem_threshold)
     {
 #if defined(DEBUG) || defined(DEBUG2)
-      fprintf(stderr,"Flexmem calloc...handing off to flexmem malloc\n");
+      fprintf(stderr,"Xmem calloc...handing off to xmem malloc\n");
 #endif
       return malloc (n);
     }
-  if(!flexmem_hook) flexmem_init();
-  x = flexmem_hook (n);//, NULL);
+  if(!xmem_hook) xmem_init();
+  x = xmem_hook (n);//, NULL);
   memset (x, 0, n);
   return x;
 }

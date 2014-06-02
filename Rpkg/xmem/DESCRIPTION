@@ -14,8 +14,3 @@ Depends:
 Suggests:
     testthat,
     roxygen2
-Collate:
-    'xmem-package.r'
-    'xmem.r'
-    'zzz.r'
-    'refclass.r'

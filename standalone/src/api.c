@@ -6,82 +6,82 @@
 #include <omp.h>
 
 #include "uthash.h"
-#include "flexmem.h"
+#include "xmem.h"
 
-static char flexmem_fname_pattern[FLEXMEM_MAX_PATH_LEN] = "XXXXXX";
-static char flexmem_fname_path[FLEXMEM_MAX_PATH_LEN] = "/tmp";
+static char xmem_fname_pattern[XMEM_MAX_PATH_LEN] = "XXXXXX";
+static char xmem_fname_path[XMEM_MAX_PATH_LEN] = "/tmp";
 
-char flexmem_fname_template[FLEXMEM_MAX_PATH_LEN] = "/tmp/fm_XXXXXX";
-size_t flexmem_threshold = 2000000000;
+char xmem_fname_template[XMEM_MAX_PATH_LEN] = "/tmp/fm_XXXXXX";
+size_t xmem_threshold = 2000000000;
 
-int flexmem_advise = MADV_SEQUENTIAL;
-int flexmem_offset = 0;
+int xmem_advise = MADV_SEQUENTIAL;
+int xmem_offset = 0;
 
 /* The next functions allow applications to inspect and change default
  * settings. The application must dynamically locate them with dlsym after
- * the library is loaded. They represent the flexmem API, such as it is.
+ * the library is loaded. They represent the xmem API, such as it is.
  *
  * API functions defined below include:
- * size_t flexmem_set_threshold (size_t j)
- * int flexmem_set_template (char *template)
- * int flexmem_set_pattern (char *pattern)
- * int flexmem_set_path (char *path)
- * int flexmem_madvise (int j)
- * int flexmem_memcpy_offset (int j)
- * char * flexmem_lookup(void *addr)
- * char * flexmem_get_template()
+ * size_t xmem_set_threshold (size_t j)
+ * int xmem_set_template (char *template)
+ * int xmem_set_pattern (char *pattern)
+ * int xmem_set_path (char *path)
+ * int xmem_madvise (int j)
+ * int xmem_memcpy_offset (int j)
+ * char * xmem_lookup(void *addr)
+ * char * xmem_get_template()
  */
 
 /* Set and get threshold size.
  * INPUT
- * j: proposed new flexmem_threshold size
+ * j: proposed new xmem_threshold size
  * OUTPUT
- * (return value): flexmem_threshold size on exit
+ * (return value): xmem_threshold size on exit
  */
 size_t
-flexmem_set_threshold (size_t j)
+xmem_set_threshold (size_t j)
 {
   if (j > 0)
   {
     omp_set_nest_lock (&lock);
-    flexmem_threshold = j;
+    xmem_threshold = j;
     omp_unset_nest_lock (&lock);
   }
-  return flexmem_threshold;
+  return xmem_threshold;
 }
 
 /* Set madvise option */
 int
-flexmem_madvise (int j)
+xmem_madvise (int j)
 {
   if(j> -1)
   {
     omp_set_nest_lock (&lock);
-    flexmem_advise = j;
+    xmem_advise = j;
     omp_unset_nest_lock (&lock);
   }
-  return flexmem_advise;
+  return xmem_advise;
 }
 
 /* Set memcpy offset option */
 int
-flexmem_memcpy_offset (int j)
+xmem_memcpy_offset (int j)
 {
   if(j> -1)
   {
     omp_set_nest_lock (&lock);
-    flexmem_offset = j;
+    xmem_offset = j;
     omp_unset_nest_lock (&lock);
   }
-  return flexmem_offset;
+  return xmem_offset;
 }
 
 /* Set the file template character string
- * INPUT name, a proposed new flexmem_fname_template string
+ * INPUT name, a proposed new xmem_fname_template string
  * Returns 0 on sucess, a negative number otherwise.
  */
 int
-flexmem_set_template (char *name)
+xmem_set_template (char *name)
 {
   char *s;
   int n = strlen(name);
@@ -90,17 +90,17 @@ flexmem_set_template (char *name)
   s = name + (n-6);
   if(strncmp(s, "XXXXXX", 6)!=0) return -2;
   omp_set_nest_lock (&lock);
-  memset(flexmem_fname_template, 0, FLEXMEM_MAX_PATH_LEN);
-  strncpy(flexmem_fname_template, name, FLEXMEM_MAX_PATH_LEN);
+  memset(xmem_fname_template, 0, XMEM_MAX_PATH_LEN);
+  strncpy(xmem_fname_template, name, XMEM_MAX_PATH_LEN);
   omp_unset_nest_lock (&lock);
   return 0;
 }
 /* Set the file pattern character string
- * INPUT name, a proposed new flexmem_fname_pattern string
+ * INPUT name, a proposed new xmem_fname_pattern string
  * Returns 0 on sucess, a negative number otherwise.
  */
 int
-flexmem_set_pattern (char *name)
+xmem_set_pattern (char *name)
 {
   char *s;
   int n = strlen(name);
@@ -109,42 +109,42 @@ flexmem_set_pattern (char *name)
   s = name + (n-6);
   if(strncmp(s, "XXXXXX", 6)!=0) return -2;
   omp_set_nest_lock (&lock);
-  memset(flexmem_fname_template, 0, FLEXMEM_MAX_PATH_LEN);
-  memset(flexmem_fname_pattern, 0, FLEXMEM_MAX_PATH_LEN);
-  strncpy (flexmem_fname_pattern, name, FLEXMEM_MAX_PATH_LEN);
-  snprintf(flexmem_fname_template, FLEXMEM_MAX_PATH_LEN, "%s/%s",
-           flexmem_fname_path, flexmem_fname_pattern);
+  memset(xmem_fname_template, 0, XMEM_MAX_PATH_LEN);
+  memset(xmem_fname_pattern, 0, XMEM_MAX_PATH_LEN);
+  strncpy (xmem_fname_pattern, name, XMEM_MAX_PATH_LEN);
+  snprintf(xmem_fname_template, XMEM_MAX_PATH_LEN, "%s/%s",
+           xmem_fname_path, xmem_fname_pattern);
   omp_unset_nest_lock (&lock);
   return 0;
 }
 /* Set the file directory path character string
- * INPUT name, a proposed new flexmem_fname_path string
+ * INPUT name, a proposed new xmem_fname_path string
  * Returns 0 on sucess, a negative number otherwise.
  */
 int
-flexmem_set_path (char *p)
+xmem_set_path (char *p)
 {
   int n = strlen(p);
   if(n<6) return -1;
   omp_set_nest_lock (&lock);
-  memset(flexmem_fname_template, 0, FLEXMEM_MAX_PATH_LEN);
-  memset(flexmem_fname_path, 0, FLEXMEM_MAX_PATH_LEN);
-  strncpy (flexmem_fname_path, p, FLEXMEM_MAX_PATH_LEN);
-  snprintf(flexmem_fname_template, FLEXMEM_MAX_PATH_LEN, "%s/%s",
-           flexmem_fname_path, flexmem_fname_pattern);
+  memset(xmem_fname_template, 0, XMEM_MAX_PATH_LEN);
+  memset(xmem_fname_path, 0, XMEM_MAX_PATH_LEN);
+  strncpy (xmem_fname_path, p, XMEM_MAX_PATH_LEN);
+  snprintf(xmem_fname_template, XMEM_MAX_PATH_LEN, "%s/%s",
+           xmem_fname_path, xmem_fname_pattern);
   omp_unset_nest_lock (&lock);
   return 0;
 }
-/* Return a copy of the flexmem_fname_template (allocated internally...
+/* Return a copy of the xmem_fname_template (allocated internally...
  * it is up to the caller to free the returned copy!! Yikes! My rationale
  * is this--how could I trust a buffer provided by the caller?)
  */
 char *
-flexmem_get_template()
+xmem_get_template()
 {
   char *s;
   omp_set_nest_lock (&lock);
-  s = strndup(flexmem_fname_template,FLEXMEM_MAX_PATH_LEN);
+  s = strndup(xmem_fname_template,XMEM_MAX_PATH_LEN);
   omp_unset_nest_lock (&lock);
   return s;
 }
@@ -155,13 +155,13 @@ flexmem_get_template()
  * simultaneously with this call. CALLER'S RESPONSIBILITY TO FREE RESULT!
  */
 char *
-flexmem_lookup(void *addr)
+xmem_lookup(void *addr)
 {
   char *f = NULL;
   struct map *x;
   omp_set_nest_lock (&lock);
   HASH_FIND_PTR (flexmap, &addr, x);
-  if(x) f = strndup(x->path,FLEXMEM_MAX_PATH_LEN);
+  if(x) f = strndup(x->path,XMEM_MAX_PATH_LEN);
   omp_unset_nest_lock (&lock);
   return f;
 }

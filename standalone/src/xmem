@@ -1,0 +1,43 @@
+#!/bin/bash
+# Generic xmem wrapper
+
+#Linux: sharedobject
+#	export LD_PRELOAD=xmem.so
+#Mac: sharedobject
+#	export DYLD_INSERT_LIBRARIES="xmem.so"
+
+if test $# -lt 1; then
+  echo "Usage:"
+  echo "xmem <program> [[arg1], [arg2], ...]"
+  exit 1
+fi
+
+# Allow users to define XMEM_HOME
+if test -z "${XMEM_HOME}"; then
+  XMEM_HOME=
+fi
+XMEM=${XMEM_HOME}/lib/libxmem.so
+
+# Acquire the path of xmem script
+SOURCE="${BASH_SOURCE[0]}"
+DIR="$( dirname "$SOURCE" )"
+while [ -h "$SOURCE" ];
+do
+  SOURCE="$(readlink "$SOURCE")" [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+  DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+done
+DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+# Check existence of library, if not found make a weak attempt at finding it
+# before bailing out.
+if test ! -f "${XMEM}"; then
+  XMEM=$(find ${DIR}/../ -name "libxmem.so")
+fi
+if test ! -f "${XMEM}" -o -z "${XMEM}"; then
+  echo "Can't find libxmem.so, consider setting XMEM_HOME"
+  exit 1
+fi
+
+# Run whatever
+export LD_PRELOAD=${XMEM}
+exec "$@"

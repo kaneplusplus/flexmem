@@ -3,9 +3,10 @@
 #include <R.h>
 #define USE_RINTERNALS
 #include <Rinternals.h>
+
 /* Measure the size of R's SEXP header */
 SEXP
-Rflexmem_SEXP_SIZE ()
+Rxmem_SEXP_SIZE ()
 {
   SEXP ANS;
   PROTECT (ANS = ScalarInteger(0));
@@ -15,12 +16,12 @@ Rflexmem_SEXP_SIZE ()
 }
 
 /*
- * flexmem_threshold
+ * xmem_threshold
  * INPUT * J SEXP   Threshold value or R_NilValue
  * OUTPUT * SEXP     Threshold set point or R_NilValue on error
  */
 SEXP
-Rflexmem_threshold (SEXP J)
+Rxmem_threshold (SEXP J)
 {
   SEXP VAL;
   void *handle;
@@ -34,7 +35,7 @@ Rflexmem_threshold (SEXP J)
       return R_NilValue;
   }
   dlerror ();
-  set_threshold = (size_t (*)(size_t ))dlsym(handle, "flexmem_set_threshold");
+  set_threshold = (size_t (*)(size_t ))dlsym(handle, "xmem_set_threshold");
   if ((derror = dlerror ()) != NULL)  {
       error ("%s\n",dlerror ());
       return R_NilValue;
@@ -50,7 +51,7 @@ Rflexmem_threshold (SEXP J)
 
 /* Set madvise option */
 SEXP
-Rflexmem_madvise (SEXP J)
+Rxmem_madvise (SEXP J)
 {
   SEXP VAL;
   void *handle;
@@ -64,7 +65,7 @@ Rflexmem_madvise (SEXP J)
       return R_NilValue;
   }
   dlerror ();
-  flex_madvise = (int (*)(int ))dlsym(handle, "flexmem_madvise");
+  flex_madvise = (int (*)(int ))dlsym(handle, "xmem_madvise");
   if ((derror = dlerror ()) != NULL)  {
       error ("%s\n",dlerror ());
       return R_NilValue;
@@ -80,7 +81,7 @@ Rflexmem_madvise (SEXP J)
 
 /* Set memcpy offset option */
 SEXP
-Rflexmem_memcpy_offset (SEXP J)
+Rxmem_memcpy_offset (SEXP J)
 {
   SEXP VAL;
   void *handle;
@@ -94,7 +95,7 @@ Rflexmem_memcpy_offset (SEXP J)
       return R_NilValue;
   }
   dlerror ();
-  flex_memcpy_offset = (int (*)(int ))dlsym(handle, "flexmem_memcpy_offset");
+  flex_memcpy_offset = (int (*)(int ))dlsym(handle, "xmem_memcpy_offset");
   if ((derror = dlerror ()) != NULL)  {
       error ("%s\n",dlerror ());
       return R_NilValue;
@@ -109,15 +110,15 @@ Rflexmem_memcpy_offset (SEXP J)
 }
 
 /*
- * flexmem_set_pattern
+ * xmem_set_pattern
  *
  * INPUT S SEXP   A mktemp-style tempate string
  * OUTPUT An SEXP integer, 0 for success otherwise error
- * int flexmem_set_pattern (char *pattern)
+ * int xmem_set_pattern (char *pattern)
  *
  */
 SEXP
-Rflexmem_set_pattern (SEXP S)
+Rxmem_set_pattern (SEXP S)
 {
   SEXP VAL;
   void *handle;
@@ -131,7 +132,7 @@ Rflexmem_set_pattern (SEXP S)
       return R_NilValue;
   }
   dlerror ();
-  set_pattern = (int (*)(char *))dlsym(handle, "flexmem_set_pattern");
+  set_pattern = (int (*)(char *))dlsym(handle, "xmem_set_pattern");
   if ((derror = dlerror ()) != NULL)  {
       error ("%s\n",dlerror ());
       return R_NilValue;
@@ -145,15 +146,15 @@ Rflexmem_set_pattern (SEXP S)
 }
 
 /*
- * flexmem_set_path
+ * xmem_set_path
  *
  * INPUT S SEXP   A path to map files in
  * OUTPUT An SEXP integer, 0 for success otherwise error
- * int flexmem_set_path (char *path)
+ * int xmem_set_path (char *path)
  *
  */
 SEXP
-Rflexmem_set_path (SEXP S)
+Rxmem_set_path (SEXP S)
 {
   SEXP VAL;
   void *handle;
@@ -167,7 +168,7 @@ Rflexmem_set_path (SEXP S)
       return R_NilValue;
   }
   dlerror ();
-  set_path = (int (*)(char *))dlsym(handle, "flexmem_set_path");
+  set_path = (int (*)(char *))dlsym(handle, "xmem_set_path");
   if ((derror = dlerror ()) != NULL)  {
       error ("%s\n",dlerror ());
       return R_NilValue;
@@ -182,7 +183,7 @@ Rflexmem_set_path (SEXP S)
 
 
 SEXP
-Rflexmem_get_template ()
+Rxmem_get_template ()
 {
   SEXP VAL;
   void *handle;
@@ -196,7 +197,7 @@ Rflexmem_get_template ()
       return R_NilValue;
   }
   dlerror ();
-  get_template = (char *(*)(void))dlsym(handle, "flexmem_get_template");
+  get_template = (char *(*)(void))dlsym(handle, "xmem_get_template");
   if ((derror = dlerror ()) != NULL)  {
       error ("%s\n",dlerror ());
       return R_NilValue;
@@ -212,7 +213,7 @@ Rflexmem_get_template ()
 }
 
 SEXP
-Rflexmem_lookup (SEXP OBJECT)
+Rxmem_lookup (SEXP OBJECT)
 {
   SEXP VAL;
   void *handle;
@@ -225,7 +226,7 @@ Rflexmem_lookup (SEXP OBJECT)
       return R_NilValue;
   }
   dlerror ();
-  flookup = (char *(*)(void *))dlsym(handle, "flexmem_lookup");
+  flookup = (char *(*)(void *))dlsym(handle, "xmem_lookup");
   if ((derror = dlerror ()) != NULL)  {
       error ("%s\n",dlerror ());
       return R_NilValue;

@@ -1,5 +1,5 @@
-#' flexmem
+#' xmem
 #' 
-#' @name flexmem
+#' @name xmem
 #' @docType package
 NULL

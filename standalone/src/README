@@ -4,11 +4,11 @@ The default value is /usr/local. See the examples below...
 Quick example:
 
 make
-FLEXMEM_HOME=$(pwd) ./flexmem <program> [program arguments]
+XMEM_HOME=$(pwd) ./xmem <program> [program arguments]
 
 
 Or, install into the default location of /usr/local/:
 
 make
 make install
-flexmem <program>
+xmem <program>

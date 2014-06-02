@@ -1,8 +1,8 @@
 #Linux: sharedobject
-#	export LD_PRELOAD=$(pwd)/flexmem.so
+#	export LD_PRELOAD=$(pwd)/xmem.so
 
 #Mac: sharedobject
-#	export DYLD_INSERT_LIBRARIES="$(PWD)/flexmem.so"
+#	export DYLD_INSERT_LIBRARIES="$(PWD)/xmem.so"
 
 ifndef PREFIX
   PREFIX = /usr/local/
@@ -12,7 +12,7 @@ all: lib
 
 lib:
 	$(CC) -Wall -fopenmp -I. -fPIC -shared -c api.c
-	$(CC) -Wall -fopenmp -I. -fPIC -shared -o libflexmem.so api.o flexmem.c -ldl
+	$(CC) -Wall -fopenmp -I. -fPIC -shared -o libxmem.so api.o xmem.c -ldl
 
 clean:
 	rm -f *.so *.o  test
@@ -22,10 +22,10 @@ test:
 
 install:
 	mkdir -p $(PREFIX)/bin $(PREFIX)/lib
-	cat flexmem | sed -e "s%FLEXMEM_HOME=$$%FLEXMEM_HOME=${PREFIX}%" > $(PREFIX)/bin/flexmem
-	chmod +x $(PREFIX)/bin/flexmem
-	cp libflexmem.so $(PREFIX)/lib
+	cat xmem | sed -e "s%FLEXMEM_HOME=$$%FLEXMEM_HOME=${PREFIX}%" > $(PREFIX)/bin/xmem
+	chmod +x $(PREFIX)/bin/xmem
+	cp libxmem.so $(PREFIX)/lib
 
 uninstall:
-	rm -f $(PREFIX)/bin/flexmem
-	rm -f $(PREFIX)/lib/libflexmem.so
+	rm -f $(PREFIX)/bin/xmem
+	rm -f $(PREFIX)/lib/libxmem.so
