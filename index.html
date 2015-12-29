@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>flexmem by kaneplusplus</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">flexmem</h1>
+      <h2 class="project-tagline">move any application out-of-core</h2>
+      <a href="https://github.com/kaneplusplus/flexmem" class="btn">View on GitHub</a>
+      <a href="https://github.com/kaneplusplus/flexmem/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/kaneplusplus/flexmem/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+      <p>flexmem allows users to transparently create out-of-core data structures that may be much larger than available RAM</p>
+
+<h1>
+<a id="description" class="anchor" href="#description" aria-hidden="true"><span class="octicon octicon-link"></span></a>Description</h1>
+
+<p>flexmem is a general, transparent tool for out-of-core (OOC) computing. It is launched as a command line utility, taking an application as an  argument. All memory allocations larger than a specified threshold are memory-mapped to a binary file. When data are not needed, they are stored on disk. It is both process- and thread-safe.</p>
+
+<p>flexmem will not make programs run faster. Allocations larger then the specified threshold are allocated onto the disk and retrieval from a disk is slower than for RAM. However, flexmem will allow you to run programs that would not run on a machine due to RAM constraints.</p>
+
+<h1>
+<a id="requirements" class="anchor" href="#requirements" aria-hidden="true"><span class="octicon octicon-link"></span></a>Requirements</h1>
+
+<ol>
+<li>Linux</li>
+<li>Some version of openmp is installed on the machine.</li>
+<li>A C compiler</li>
+</ol>
+
+<h1>
+<a id="installing-flexmem" class="anchor" href="#installing-flexmem" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installing flexmem</h1>
+
+<p>The flexmem package can be installed by navigating to the 
+<code>flexmem/standalone/src</code> directory using the following commands:</p>
+
+<div class="highlight highlight-source-shell"><pre>mike@mike-VirtualBox:<span class="pl-k">~</span>/Projects/flexmem/standalone/src
+<span class="pl-k">&gt;</span> make all
+mike@mike-VirtualBox:<span class="pl-k">~</span>/Projects/flexmem/standalone/src
+<span class="pl-k">&gt;</span> sudo make install</pre></div>
+
+<p>Note that make install will put the executable into /usr/local/bin and the required shared object file into /usr/local/lib.</p>
+
+<h1>
+<a id="installing-the-r-flexmem-package" class="anchor" href="#installing-the-r-flexmem-package" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installing the R flexmem package</h1>
+
+<p>After installing xmem the R xmem package can be installed by navigating
+to the <code>flexmem/Rpkg</code> directory and using the following commands in a shell:</p>
+
+<div class="highlight highlight-source-shell"><pre>R CMD INSTALL flexmem</pre></div>
+
+<p>The package documentation provides more information about how to use the 
+R flexmem package.</p>
+
+<h1>
+<a id="using-xmem" class="anchor" href="#using-xmem" aria-hidden="true"><span class="octicon octicon-link"></span></a>Using xmem</h1>
+
+<p>Start an application in xmem by specifying the application as an argument</p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-smi">mike</span><span class="pl-k">@</span><span class="pl-smi">mike</span><span class="pl-k">-</span><span class="pl-smi">VirtualBox</span><span class="pl-k">:~</span><span class="pl-k">/</span><span class="pl-k">$</span> <span class="pl-smi">xmem</span> <span class="pl-smi">R</span></pre></div>
+
+<p>The memory-mapped files are stored in <code>/tmp</code> by default. This parameter along
+with others can be interrogated using the Rxmem package, included in
+this project.</p>
+
+<h1>
+<a id="benchmarks" class="anchor" href="#benchmarks" aria-hidden="true"><span class="octicon octicon-link"></span></a>Benchmarks</h1>
+
+<p>In general flexmem is faster than swap when large chunks of contiguous memory is allocated. When a program makes many, small allocations, then swap is faster. You will get the best performance with flexmem when swap is left on.</p>
+
+<p>A performance comparison of flexmem vs. page swapping can be found <a href="http://slashdot.org">here</a>.</p>
+
+<p>A more applied set of benchmarks, which uses flexmem to analyze genetic data, can be found <a href="https://github.com/bwlewis/1000_genomes_examples/blob/master/exm.Rmd">here</a></p>
+
+<h1>
+<a id="support" class="anchor" href="#support" aria-hidden="true"><span class="octicon octicon-link"></span></a>Support</h1>
+
+<ol>
+<li>flexmem is supported on Linux.</li>
+<li>The development home of this project can be found at: <a href="https://github.com/kaneplusplus/xmem">https://github.com/kaneplusplus/xmem</a>
+</li>
+<li>Contributions are welcome.</li>
+<li>For more information contact Michael Kane at <a href="kaneplusplus@gmail.com">kaneplusplus@gmail.com</a>.</li>
+</ol>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/kaneplusplus/flexmem">flexmem</a> is maintained by <a href="https://github.com/kaneplusplus">kaneplusplus</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
