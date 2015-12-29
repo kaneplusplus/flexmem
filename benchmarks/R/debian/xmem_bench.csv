@@ -1,0 +1,6 @@
+"","object_size","seconds","memory","order","operation","object_size","seconds","memory","order","operation"
+"1","14.9 Gb",86921.258279181,"xmem","random","read","14.9 Gb",148937.707586072,"xmem","random","write"
+"2","11.2 Gb",43351.467986852,"xmem","random","read","11.2 Gb",89508.741399292,"xmem","random","write"
+"3","7.5 Gb",9673.36836376,"xmem","random","read","7.5 Gb",50278.187933754,"xmem","random","write"
+"4","3.8 Gb",71.556053371,"xmem","random","read","3.8 Gb",2250.480630445,"xmem","random","write"
+"5","0.1 Gb",0.00543121,"xmem","random","read","0.1 Gb",0.077333273,"xmem","random","write"
