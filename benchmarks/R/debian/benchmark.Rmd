@@ -1,0 +1,76 @@
+# Benchmarking Reads and Writes in flexmem
+
+This benchmark shows the read/write performance of 
+the [flexmem](http://kaneplusplus.github.io/flexmem/) software application. These
+benchmarks were performed on the test machine whose configurations are shown below.
+The actual benchmarks consists of reading and writing to random memory locations 
+in a vector and they were implementing using the 
+[R programming environment](https://www.r-project.org/).
+
+# Test System Configuration
+
+- CPU: Single Intel Q9650 3.0 GHz (four physical CPU cores)
+- RAM: 8 GB Non-ECC Synchronous Unbuffered RAM 1,333 MHz
+- Swap: 4 GB
+- Hard Drive: Western Digital 10K SATA, 300 GB
+- OS: Debian 8 (Linux kernel 4.1.0-2)
+- R version 3.2.3 (2015-12-10)
+
+# Benchmark Construction and Results
+
+Each iteration of the benchmark consists of allocating a contiguous double-precision
+floating point vector. A subset of 10% of the elements were chosen at random and values were read from them. The vector size was increased every iteration. The benchmarks were run using
+both flexmem and swap so that read and write performance could be directly compared.
+
+```{r, echo=FALSE}
+library(ggplot2)
+x = read.csv("xmem_bench.csv")
+sizes = as.numeric(matrix(unlist(strsplit(as.character(x$object_size), " ")), ncol=2, byrow=TRUE)[,1])
+x1 = x[,2:6]
+x1$size = sizes
+x2 = x[,7:11]
+x2$size = sizes
+names(x2) = gsub(".1", "", names(x2))
+x = rbind(x1, x2)
+x$Type = paste(x$memory, x$operation)
+y = x
+x = na.omit(read.csv("mem_bench.csv"))
+sizes = as.numeric(matrix(unlist(strsplit(as.character(x$object_size), " ")), ncol=2, byrow=TRUE)[,1])
+x1 = x[,2:6]
+x1$size = sizes
+x2 = x[,7:11]
+x2$size = sizes
+names(x2) = gsub(".1", "", names(x2))
+x = rbind(x1, x2)
+x$memory = "swap"
+x$Type = paste(x$memory, x$operation)
+x = rbind(y, x)
+qplot(x=size, y=seconds, data=x, group=Type, color=Type) + geom_line() +
+  xlab("Data Size (GB)") + ylab("Seconds")
+```
+
+The figure above shows the time taken for reading and writing. For the swap benchmarks, 
+the sytem actually begins swapping after 7.5 GB. Since the data structures continue to
+fit in RAM the read and write speeds remain more peformant than flexmem. Since flexmem
+is configure to map memory for any allocation more than 2 GB, reads become slower after 
+this point. Writes remain competitive with swap through the use of since they are first 
+written to RAM with the dirty bit set for a written page. It is not until that page is needed 
+for operation until it is actually written to disk.
+
+By default, the system does not allow the allocation of memory larger than available RAM.
+As a result vectors in the swap benchmark are cut-off at 8 GB. Memory mapping on the
+other hand is valid for allocations up to the size of the hard drive. As a result
+flexmem is able to vectors beyond the size of the available RAM+swap space but has
+the performance penalty shown. This penalty can be substantiall mitigated using faster
+drives, which are now available with performance approaching RAM.
+
+Two other things to note about these benchmarks. First, the flexmem benchmark
+may begin degrading before running out of available RAM, depending on the user-specified
+allocation threshold. However, the system performance is much better. That is, 
+the system becomes unresponsive when using swap. This is because when swap is employed
+any page may be swapped to disk, including those responsible for other critical operations,
+including rendering the windows environment. When run with flexmem the system stays
+responsive, only using RAM that has not been allocated to other tasks. Second, this benchmark
+shows the result of single, large allocations. When there are many medium-size allocations
+flexmem and swap outperform swap. A separate benchmark examining this behavior can be found
+[here](https://github.com/bwlewis/1000_genomes_examples/blob/master/exm.Rmd).
